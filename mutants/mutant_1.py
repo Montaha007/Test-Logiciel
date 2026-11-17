@@ -23,6 +23,7 @@ def total_panier(lignes):
             raise ValueError("prix invalide")
         if quantite < 1 or quantite > QUANTITE_MAX:
             raise ValueError("quantité invalide")
+        # ORIGINAL total += prix * quantite
         total += prix + quantite
     return round(total, 3)
 
