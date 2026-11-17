@@ -31,6 +31,7 @@ def remise(total, adherent, code_promo=None):
     """Montant de la remise accordée sur un total."""
     montant = 0.0
     if adherent and total >= SEUIL_REMISE:
+        # ORIGINAL montant += total * TAUX_REMISE / 100
         montant += SEUIL_REMISE * TAUX_REMISE / 100
     if code_promo is not None and code_promo == CODE_PROMO:
         montant += REMISE_CODE
