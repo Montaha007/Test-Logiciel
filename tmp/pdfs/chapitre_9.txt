@@ -1,0 +1,1037 @@
+=== PAGE 1 ===
+Test Boîte Blanche : Couverture du Code et Test de 
+Mutation
+Chapitre 9
+Cours Qualité et Test Logiciels 
+–
+ II3
+-
+GL
+Dr-Ing. Sihem Ben Sassi
+=== PAGE 2 ===
+Plan
+◦ Introduction
+◦ Graphe de flot de contrôle
+◦ Couverture des instructions et des branches
+◦ Couverture des conditions et MC/DC
+◦ Chemins, complexité cyclomatique et boucles
+◦ Test du flot de données
+◦ La couverture en pratique
+◦ Test de mutation
+◦ Oracle et test par propriétés
+◦ Synthèse
+2
+=== PAGE 3 ===
+Objectifs du chapitre
+Après avoir terminé ce chapitre, vous serez en mesure de :
+◦ Construire le graphe de flot de contrôle d'une fonction et en déduire des chemins
+◦ Concevoir des tests pour couvrir les instructions et les branches, et mesurer la couverture obtenue
+◦ Distinguer couverture des conditions, conditions multiples et MC/DC, et trouver un jeu MC/DC minimal
+◦ Calculer la complexité cyclomatique et tester les boucles
+◦ Repérer les paires définition-utilisation et les anomalies de flot de données
+◦ Utiliser JaCoCo et coverage.py, et interpréter un rapport de couverture sans en faire un objectif
+◦ Évaluer l'efficacité d'une suite par le test de mutation
+◦ Écrire un test par propriétés et auditer une suite de tests générée par une IA
+3
+=== PAGE 4 ===
+Introduction
+Cas de Apple, février 2014 (CVE-2014-1266)
+◦ Dans la bibliothèque TLS d'iOS et de macOS, une ligne « goto 
+fail; » est dupliquée par erreur
+◦ Le second « goto fail; » s'exécute toujours : la vérification de 
+la signature du serveur est sautée, et la fonction renvoie err = 
+0, c'est-à-dire « succès »
+◦ Conséquence : un attaquant placé entre le client et le serveur 
+peut se faire passer pour n'importe quel site HTTPS
+Ce qu'aurait montré la boîte blanche
+◦ Un rapport de couverture des instructions aurait affiché en 
+rouge les lignes qui suivent : elles ne sont jamais exécutées, 
+quel que soit le test
+◦ Le compilateur pouvait aussi signaler ce code inatteignable 
+(option -Wunreachable-code de Clang)
+Extrait simplifié du code C en cause
+if ((err = SSLHashSHA1.update(&ctx, &serverRandom)) != 0)
+    goto fail;
+if ((err = SSLHashSHA1.update(&ctx, &signedParams)) != 0)
+    goto fail;
+    goto fail;      /* ligne dupliquée */
+if ((err = SSLHashSHA1.final(&ctx, &hashOut)) != 0)
+    goto fail;
+err = sslRawVerify(...); /* signature */
+...
+fail:
+    SSLFreeBuffer(&signedHashes);
+    return err;     /* err vaut 0 : succès */
+Les tests fonctionnels passaient : une connexion à un vrai serveur 
+réussit. Seule la structure du code révélait le problème.
+4
+=== PAGE 5 ===
+Introduction : le test boîte blanche
+Définition (ISTQB)
+◦ Technique de test fondée sur la structure interne de l'objet de test : code, architecture, flux de données. On dit 
+aussi test structurel
+◦ Elle désigne des éléments à couvrir (instructions, branches, conditions...) => couverture = éléments exercés / 
+éléments identifiés
+Boîte noire et boîte blanche
+◦ Boîte noire (chapitre 8) : les tests viennent de la spécification => trouvent les fonctions manquantes ou fausses
+◦ Boîte blanche : les tests viennent du code => trouvent le code jamais exécuté et les chemins jamais essayés
+Démarche recommandée
+◦ 1. Concevoir les tests boîte noire ; 2. mesurer la couverture du code ; 3. analyser chaque partie non couverte ; 4. 
+compléter les tests
+5
+=== PAGE 6 ===
+Introduction : valeur et limites de la boite blanche
+Valeur (CTFL v4.0)
+◦ Toute l'implémentation est prise en compte, même quand la spécification est vague, incomplète ou dépassée
+◦ La couverture mesure objectivement ce que les tests ont exercé => elle montre où ajouter des tests
+◦ Elle s'applique aussi au test statique : relecture du code, exécution à la main d'un algorithme ou d'un pseudo-code
+Limites
+◦ Trouver le code absent : une exigence jamais implémentée n'a aucune ligne à couvrir
+◦ Garantir l'absence de défauts : 100 % de couverture signifie que tout a été exécuté, pas que tout a été vérifié
+◦ Exemple : rappel de numZero (chapitre 7) : le test [2, 7, 0] exécute 100 % des instructions et des branches, mais le défaut 
+(boucle qui commence à 1) n'est pas révélé
+6
+=== PAGE 7 ===
+Introduction : les approches structurelles
+◦ Ce chapitre présente trois familles de critères structurels ; chacune modélise le code d'une manière différente
+Approche Modèle du code Critères Question posée
+Flot de contrôle Graphe de flot de contrôle Instructions, branches, conditions, MC/DC, chemins Quelles parties du code les tests ont-ils exécutées ?
+Flot de données
+Graphe annoté par les 
+définitions et les utilisations des 
+variables
+Toutes les définitions, toutes les 
+utilisations
+Chaque valeur calculée est-elle utilisée 
+par un test ?
+Mutation Versions du code modifiées volontairement (mutants) Score de mutation Les tests détectent-ils une faute introduite dans le code ?
+Les deux premières mesurent ce qui est exécuté ; la mutation mesure ce qui est vérifié
+7
+=== PAGE 8 ===
+Graphe de flot de contrôle
+8
+=== PAGE 9 ===
+Graphe de flot de contrôle : définitions
+Graphe de flot de contrôle (GFC)
+◦ Graphe orienté qui représente tous les enchaînements possibles des instructions d'une fonction
+◦ Nœud : bloc d'instructions exécutées en séquence, sans branchement ; nœud de décision : instruction à deux 
+sorties (V / F)
+◦ Arête : transfert de contrôle d'un nœud à un autre ; un seul nœud d'entrée et un seul nœud de sortie
+Chemin
+◦ Suite d'arêtes qui va du nœud d'entrée au nœud de sortie
+◦ Chemin faisable : il existe une entrée qui le fait parcourir ; sinon, chemin infaisable
+◦ Exemple : dans une fonction qui teste « total >= 100 » puis « total < 50 », le chemin qui prend les deux branches V est 
+infaisable
+9
+=== PAGE 10 ===
+Graphe de flot de contrôle : les constructions
+Séquence
+a = 1
+b = a + 1
+c = 2 * b
+if sans else
+c V
+blocF
+suite
+if ... else
+c VF
+bloc Vbloc F
+suite
+Boucle while / for
+c
+V
+corps
+retour
+F
+suite
+Chaque instruction de contrôle donne une forme de graphe. Une boucle a deux sorties, comme un if : continuer (V) ou sortir (F)
+10
+=== PAGE 11 ===
+Graphe de flot de contrôle : running 
+example
+Règle de fidélité de « Liste de Courses », utilisée dans tout le chapitre
+◦ Un adhérent dont la commande atteint 100 DT bénéficie d'une remise de 10 %
+◦ Un bonus de 5 DT s'ajoute si le client a au moins 500 points de fidélité, ou si sa remise dépasse déjà 15 DT
+Calcul du montant à payer — Java Calcul du montant à payer — Python
+static double montantAPayer(double total,
+        boolean adherent, int points) {
+    double remise = 0;
+    if (adherent && total >= 100) {
+        remise = total * 0.10;
+    }
+    if (points >= 500 || remise > 15) {
+        remise = remise + 5;
+    }
+    return total - remise;
+}
+def montant_a_payer(total: float, adherent: bool,
+                    points: int) -> float:
+    remise = 0.0
+    if adherent and total >= 100:
+        remise = total * 0.10
+    if points >= 500 or remise > 15:
+        remise = remise + 5
+    return total - remise
+Particularité : la seconde décision utilise remise, calculée par la première
+11
+=== PAGE 12 ===
+Graphe de flot de contrôle : le graphe de l’exemple
+1   remise = 0
+2
+adherent && total >= 100
+décision D1
+V
+3   remise = total × 0,10F
+4
+points >= 500 || remise > 15
+décision D2
+V
+5   remise = remise + 5F
+6   return total − remise
+Chaque nœud porte un numéro ; les 
+losanges sont les décisions D1 et D2
+6 nœuds, dont 2 nœuds de décision
+7 arêtes, c'est-à-dire 7 branches : 4 
+conditionnelles (V / F) et 3 inconditionnelles
+4 chemins de l'entrée (1) à la sortie (6)
+12
+=== PAGE 13 ===
+Graphe de flot de contrôle : sensibiliser un chemin
+Sensibiliser un chemin = trouver une entrée qui le fait parcourir
+◦ 1. Choisir le chemin dans le graphe
+◦ 2. Écrire son prédicat : la conjonction des conditions rencontrées, en tenant compte des affectations faites en 
+chemin
+◦ 3. Résoudre le prédicat => données de test ; puis calculer le résultat attendu à partir de la spécification
+◦ Exemple : chemin 1-2-3-4-6 (D1 vraie, D2 fausse) : adherent ET total ≥ 100 ET points < 500 ET total ×0,10 ≤ 15, donc 100 
+≤ total ≤ 150
+◦ Exemple de test : cas de test retenu : adhérent, 120 DT, 0 point => remise de 12 DT, montant attendu 108 DT
+Remarque : remise n'est pas une entrée ; le prédicat doit l'exprimer en fonction des entrées
+13
+=== PAGE 14 ===
+Graphe de flot de contrôle : chemins infaisables
+Pourquoi des chemins sont infaisables
+◦ Des conditions dépendent les unes des autres : le prédicat du chemin est contradictoire
+◦ Exemple : dans l’exemple, si D1 est fausse alors remise vaut 0 : « remise > 15 » ne peut pas être vraie. D2 n'est vraie, 
+après D1 fausse, que grâce aux points
+Conséquences
+◦ 100 % d'un critère est parfois impossible : on exclut les éléments infaisables du calcul, en le justifiant
+◦ Savoir si un chemin est faisable est indécidable en général => analyse humaine ou outillée
+Outils qui sensibilisent les chemins automatiquement
+◦ Exécution symbolique ou concolique (KLEE, Symbolic PathFinder) ; génération par recherche (EvoSuite en Java, 
+Pynguin en Python)
+14
+=== PAGE 15 ===
+Couverture des instructions et des branches
+15
+=== PAGE 16 ===
+Couverture des instructions : définition
+Test des instructions (ISTQB)
+◦ Éléments à couvrir : les instructions exécutables du code
+◦ Couverture des instructions = instructions exécutées par les tests / instructions exécutables
+◦ 100 % : chaque instruction a été exécutée au moins une fois
+Sur l’exemple
+◦ Un seul test exécute les 6 nœuds du graphe, donc toutes les instructions
+◦ Exemple de test pour 100 % des instructions : adhérent, 200 DT, 0 point => remise 20 DT, puis bonus de 5 DT car la 
+remise dépasse 15 DT ; montant attendu 175 DT
+Un seul test, et pourtant D1 et D2 n'ont jamais été fausses
+16
+=== PAGE 17 ===
+Couverture des instructions : ce qu'elle ne voit pas
+◦ 100 % des instructions est un minimum ; voici les situations qu'il laisse passer (d'après les exemples de Bullseye Testing 
+Technology)
+Situation Ce qui reste non testé Exemple
+if sans else Le cas où la condition est fausse La variable reste à null : voir la diapositive suivante
+Condition composée Les conditions qui ne sont jamais évaluées adherent && total >= 100 : la ligne est exécutée même si total >= 100 n'est jamais évalué
+Boucle La boucle exécutée 0 fois Le total d'une liste vide
+Code absent L'exigence qui n'a jamais été implémentée Aucun plafond sur la remise : rien à couvrir
+D'où des critères plus exigeants : branches, conditions, chemins
+17
+=== PAGE 18 ===
+Couverture des instructions : le cas oublié
+◦ Le test bandeauRemise(true) exécute toutes les instructions : couverture de 100 %, test réussi
+◦ Le cas « non adhérent » n'a jamais été exécuté : la branche F du if n'est pas couverte
+Bandeau de remise — Java Bandeau de remise — Python
+static String bandeauRemise(boolean adherent) {
+    String texte = null;
+    if (adherent) {
+        texte = "Remise adhérent : -10 %";
+    }
+    return texte.toUpperCase();
+}
+def bandeau_remise(adherent: bool) -> str:
+    texte = None
+    if adherent:
+        texte = "Remise adhérent : -10 %"
+    return texte.upper()
+bandeauRemise(false) : NullPointerException en Java, AttributeError en Python. Seule la couverture des branches oblige à écrire ce test
+18
+=== PAGE 19 ===
+Couverture des branches : définition
+Test des branches (ISTQB CTFL v4.0)
+◦ Branche : transfert de contrôle entre deux nœuds du graphe. Elle est conditionnelle (une issue V ou F d'une 
+décision) ou inconditionnelle (passage en séquence)
+◦ Couverture des branches = branches exercées / branches du graphe
+Propriété
+◦ 100 % des branches => 100 % des instructions, mais pas l'inverse : la couverture des branches subsume celle des 
+instructions
+Vocabulaire
+◦ D'autres références (anciens syllabus, DO-178C) parlent de couverture des décisions : seules les issues des 
+décisions sont comptées
+◦ Les pourcentages diffèrent, mais 100 % des branches et 100 % des décisions sont atteints par les mêmes tests
+19
+=== PAGE 20 ===
+Couverture des branches : exemple
+◦ Les 7 branches de d’exemple et les tests qui les exercent
+◦ T1 : adhérent, 200 DT, 0 point => 175 DT attendu.  
+◦ T2 : non adhérent, 50 DT, 0 point => 50 DT attendu
+Branche Type Exercée par T1 Exercée par T2
+1 → 2 Inconditionnelle Oui Oui
+2 → 3 (D1 vraie) Conditionnelle Oui Non
+2 → 4 (D1 fausse) Conditionnelle Non Oui
+3 → 4 Inconditionnelle Oui Non
+4 → 5 (D2 vraie) Conditionnelle Oui Non
+4 → 6 (D2 fausse) Conditionnelle Non Oui
+5 → 6 Inconditionnelle Oui Non
+T1 seul : 5 branches sur 7 (71 %).  T1 + T2 : 7 sur 7 (100 %)
+20
+
+=== PAGE 21 ===
+Activité 1 
+individuelle
+Objectif : construire un graphe de flot de contrôle et mesurer la couverture
+Contexte : frais de livraison de « Liste de Courses » (code sur la 
+diapositive suivante) :
+◦ Livraison gratuite pour un abonné Premium ou une commande d'au 
+moins 50 DT
+◦ Sinon : 4,900 DT dans le Grand Tunis, 7,900 DT ailleurs
+◦ Suite existante : TA (Premium, 1 article à 10 DT, Sfax => 0 DT) et TB (non 
+Premium, 1 article à 20 DT, Sfax => 7,900 DT)
+Travail demandé :
+◦ 1. Dessiner le graphe de flot de contrôle ; compter ses nœuds, ses 
+arêtes et ses décisions
+◦ 2. Mesurer la couverture des instructions et des branches obtenues par 
+TA et TB
+◦ 3. Ajouter le minimum de tests pour atteindre 100 % des branches
+◦ 4. Proposer les tests de la boucle
+Durée : 20 minutes
+21
+Frais de livraison — Java
+record Article(double prix, int quantite) {}
+ 
+static double fraisLivraison(List<Article> 
+articles,
+        boolean premium, String zone) {
+    double total = 0;
+    for (Article a : articles) {
+        total += a.prix() * a.quantite();
+    }
+    if (premium || total >= 50) {
+        return 0;
+    }
+    if (zone.equals("GRAND_TUNIS")) {
+        return 4.900;
+    }
+    return 7.900;
+}
+=== PAGE 22 ===
+Activité 1 : le code à tester
+Frais de livraison — Java Frais de livraison — Python
+record Article(double prix, int quantite) {}
+ 
+static double fraisLivraison(List<Article> articles,
+        boolean premium, String zone) {
+    double total = 0;
+    for (Article a : articles) {
+        total += a.prix() * a.quantite();
+    }
+    if (premium || total >= 50) {
+        return 0;
+    }
+    if (zone.equals("GRAND_TUNIS")) {
+        return 4.900;
+    }
+    return 7.900;
+}
+@dataclass
+class Article:
+    prix: float
+    quantite: int
+ 
+def frais_livraison(articles: list[Article],
+                    premium: bool, zone: str) -> float:
+    total = 0.0
+    for a in articles:
+        total += a.prix * a.quantite
+    if premium or total >= 50:
+        return 0.0
+    if zone == "GRAND_TUNIS":
+        return 4.900
+    return 7.900
+22
+=== PAGE 23 ===
+Activité 1 : 
+Réponse
+le graphe de flot de contrôle
+1   total = 0
+2article suivant ?
+V
+3   total += prix × qté
+retour
+F
+4premium || total >= 50
+V
+5   return 0
+F
+6zone = GRAND_TUNIS
+V
+7   return 4,900
+F
+8   return 7,900 9 fin
+9 nœuds et 11 arêtes, donc 11 branches
+3 décisions : la boucle (continuer ou sortir) et les 
+deux if
+Les trois return rejoignent le nœud de sortie 9
+23
+=== PAGE 24 ===
+Activité 1 individuelle
+couverture et tests à ajouter
+◦ TA et TB exécutent 7 instructions sur 8 (87,5 %) : « return 4,900 » n'est jamais exécuté. Ils exercent 9 branches sur 11 (82 %) : 6 → 7 et 7 → 
+9 manquent
+Test Données Résultat attendu Apport
+TC Non Premium, 1 article à 20 DT, GRAND_TUNIS 4,900 DT Branches 6 → 7 et 7 → 9 : 100 % des branches avec TA, TB, TC
+Boucle : 0 itération Non Premium, liste vide, Sfax 7,900 DT ? Question à la spécification : faut-il facturer une commande vide ?
+Boucle : 2 itérations Non Premium, 2 articles à 30 DT, Sfax 0 DT Le total cumule bien plusieurs articles
+Un test de plus suffit pour les branches ; la boucle vide révèle une question de spécification
+24
+=== PAGE 25 ===
+Couverture des conditions et MC/DC 
+(Modified Condition/Decision Coverage)
+25
+=== PAGE 26 ===
+Conditions et décisions : vocabulaire
+Décision
+◦ Expression booléenne qui choisit une branche : celle d'un if, d'un while, d'un for...
+Condition
+◦ Expression booléenne élémentaire, sans opérateur logique ; une décision combine une ou plusieurs conditions 
+avec ET, OU, NON
+◦ Exemple : D1 = adherent && total >= 100 contient deux conditions : C1 = adherent, C2 = total >= 100. D2 = points >= 500 
+|| remise > 15 contient C3 et C4
+Évaluation en court-circuit
+◦ En Java (&&, ||) et en Python (and, or), l'évaluation s'arrête dès que le résultat est connu
+◦ Si adherent est faux, total >= 100 n'est pas évaluée. Les opérateurs & et | de Java évaluent toujours les deux côtés
+26
+=== PAGE 27 ===
+Couverture des conditions
+◦ Définition : chaque condition prend au moins une fois la valeur vrai et au moins une fois la valeur faux
+◦ Exemple de jeu de tests pour couvrir les conditions de l’exemple, si toutes les conditions sont évaluées (évaluation complète)
+Test C1 C2 C3 C4 D1 D2 Attendu
+T3 : adhérent, 200 DT, 600 points V V V V V V 175 DT
+T4 : non adhérent, 50 DT, 0 point F F F F F F 50 DT
+2 tests : chaque condition et chaque décision prend V et F. Mais aucune condition n'a montré son influence propre
+27
+=== PAGE 28 ===
+Couverture des conditions : l'effet du court
+-
+circuit
+Avec && et || (Java) ou and et or (Python)
+◦ T4 : adherent est faux => C2 (total >= 100) n'est jamais évaluée
+◦ T3 : points >= 500 est vraie => C4 (remise > 15) n'est jamais évaluée
+◦ Un outil qui mesure les conditions compte donc C2 = F et C4 = V comme non couverts
+Jeu de tests adapté au court-circuit : 3 tests
+◦ Adhérent, 200 DT, 0 point (175 DT) ; adhérent, 50 DT, 0 point (50 DT) ; non adhérent, 50 DT, 600 points (45 DT)
+Rq
+◦ Avec le court-circuit, couvrir chaque condition évaluée fait aussi prendre V et F à la décision, pour les formes 
+usuelles (A && B, A || B, (A && B) || C...)
+28
+=== PAGE 29 ===
+Conditions et décisions : deux critères incomparables
+◦ Décision étudiée, en évaluation complète (opérateur & de Java) : adherent & total >= 100
+◦ Deux jeux de tests : chacun satisfait un critère et pas l'autre
+Jeu Test adherent total >= 100 Décision
+Jeu 1 Adhérent, 50 DT V F F
+Jeu 1 Non adhérent, 200 DT F V F
+Jeu 2 Adhérent, 200 DT V V V
+Jeu 2 Adhérent, 50 DT V F F
+Jeu 1 : 100 % des conditions, décision jamais vraie. Jeu 2 : 100 % des décisions, adherent jamais faux. D'où le critère 
+décision/condition, qui exige les deux
+29
+=== PAGE 30 ===
+Couverture des conditions multiples
+◦ Définition : toutes les combinaisons des valeurs des conditions de chaque décision sont exercées => 2n combinaisons pour n 
+conditions
+◦ Exemple pour la décision D1 de l’exemple (2 conditions, donc 4 combinaisons)
+C1 : adherent C2 : total >= 100 D1 Exemple de données
+V V V Adhérent, 200 DT
+V F F Adhérent, 50 DT
+F V F Non adhérent, 200 DT
+F F F Non adhérent, 50 DT
+Exemple complet : 4 combinaisons pour D1 et 4 pour D2. Le coût double avec chaque condition ajoutée
+30
+=== PAGE 31 ===
+Conditions multiples : limites
+Coût exponentiel
+◦ 2 conditions => 4 combinaisons ; 5 conditions => 32 ; 10 conditions => 1 024
+Combinaisons impossibles
+◦ Quand les conditions sont liées, certaines combinaisons sont infaisables
+◦ Exemple : total >= 100 && total <= 150 : la combinaison (F, F) est impossible ; un total ne peut pas être à la fois inférieur 
+à 100 et supérieur à 150
+Avec le court-circuit
+◦ Les combinaisons à considérer sont celles des conditions réellement évaluées : pour A && B && C, 4 cas au lieu de 
+8
+Réservé aux décisions de 2 ou 3 conditions. Au-delà : MC/DC
+31
+=== PAGE 32 ===
+MC/DC : définition
+Modified Condition/Decision Coverage
+◦ Chaque condition et chaque décision prend les valeurs V et F
+◦ Et chaque condition montre qu'elle influence seule le résultat de la décision
+Paire d'indépendance
+◦ Deux tests où seule cette condition change, les autres restant fixes, et où le résultat de la décision change
+◦ Exemple : pour C2 dans D1 : (adhérent, 200 DT) donne V et (adhérent, 50 DT) donne F ; seule C2 a changé, et la décision 
+aussi
+Coût
+◦ Entre n + 1 et 2n tests pour une décision de n conditions, au lieu de 2n
+◦ Exemple : 10 conditions : 11 tests au minimum en MC/DC, contre 1 024 en conditions multiples
+32
+=== PAGE 33 ===
+MC/DC : la méthode sur un exemple
+◦ Règle : la livraison express est proposée si l'article est en stock (A) ET si le client est adhérent (B) OU commande au moins 100 DT (C) 
+=> A ∧ (B ∨ C)
+◦ On écrit la table de vérité, puis on cherche les paires d'indépendance de chaque condition
+N° A B C Express Paires d'indépendance
+1 F F F F —
+2 F F V F A avec 6
+3 F V F F A avec 7
+4 F V V F A avec 8
+5 V F F F B avec 7 ; C avec 6
+6 V F V V A avec 2 ; C avec 5
+7 V V F V A avec 3 ; B avec 5
+8 V V V V A avec 4
+Jeu minimal : {2, 5, 6, 7} ou {3, 5, 6, 7} => 4 tests = n + 1, au lieu de 8
+33
+=== PAGE 34 ===
+MC/DC : sur l’exemple
+◦ Exemple de jeu MC/DC pour montantAPayer : il faut une paire d'indépendance pour chacune des 4 conditions
+Test C1 C2 C3 C4 D1 D2 Attendu
+M1 : adhérent, 200 DT, 0 point V V F V V V 175 DT
+M2 : adhérent, 50 DT, 0 point V F F F F F 50 DT
+M3 : non adhérent, 200 DT, 600 points F V V F F V 195 DT
+Paires : C1 (M1, M3) ; C2 (M1, M2) ; C3 (M2, M3) ; C4 (M1, M2). 3 tests suffisent, car chaque test sert aux deux décisions
+34
+=== PAGE 35 ===
+MC/DC en pratique
+Où MC/DC est exigée
+◦ Aéronautique : DO-178C, pour le logiciel de niveau A, dont la défaillance serait catastrophique (niveau B : 
+décisions ; niveau C : instructions)
+◦ Automobile : ISO 26262, fortement recommandée pour le niveau ASIL D
+Court-circuit
+◦ Dans une paire, une condition non évaluée (court-circuit) ou sans effet sur le résultat peut varier : c'est la MC/DC 
+« par masquage », acceptée par la DO-178C
+Outils
+◦ Libres : GCC 14 (option -fcondition-coverage) et Clang 18 (option -fcoverage-mcdc) pour C et C++
+◦ Commerciaux, qualifiés pour la certification : VectorCAST, LDRA, RapiCover
+◦ JaCoCo et coverage.py ne mesurent pas MC/DC
+35
+=== PAGE 36 ===
+Hiérarchie des critères de flot de contrôle
+◦ Un critère en subsume un autre quand l'atteindre à 100 % garantit l'autre à 100 %
+Conditions multiples
+MC/DC
+Décision / condition
+Conditions
+Tous les chemins
+Branches (décisions)
+Instructions
+A → B : 100 % de A garantit 100 % de B
+Les conditions seules ne garantissent pas les branches ; les chemins ne garantissent pas MC/DC
+36
+=== PAGE 37 ===
+Chemins, complexité cyclomatique et boucles
+37
+=== PAGE 38 ===
+Couverture des chemins
+◦ Définition : chaque chemin du nœud d'entrée au nœud de sortie est parcouru au moins une fois
+◦ L’exemple a 4 chemins ; voici un exemple de test pour chacun
+Chemin D1 D2 Données Attendu
+1-2-3-4-5-6 V V Adhérent, 200 DT, 0 point 175 DT
+1-2-3-4-6 V F Adhérent, 120 DT, 0 point 108 DT
+1-2-4-5-6 F V Non adhérent, 50 DT, 600 points 45 DT
+1-2-4-6 F F Non adhérent, 50 DT, 0 point 50 DT
+Avec une boucle, c'est impossible : une liste de 0 à 100 articles et un if dans la boucle donnent plus de 2100 chemins
+38
+=== PAGE 39 ===
+Complexité cyclomatique
+Définition (T. J. McCabe, 1976)
+◦ Nombre de chemins linéairement indépendants du graphe de flot de contrôle
+Trois façons de la calculer
+◦ V(G) = E − N + 2, avec E arêtes et N nœuds (E − N + 2P pour P composants connexes)
+◦ V(G) = nombre de décisions binaires + 1
+◦ V(G) = nombre de régions du graphe dessiné à plat, région extérieure comprise
+◦ Exemple : sur l’exemple: 7 − 6 + 2 = 3, ou 2 décisions + 1 = 3. fraisLivraison (activité 1) : 11 − 9 + 2 = 4, ou 3 décisions + 1 = 
+4
+Usage
+◦ Seuil de 10 par fonction recommandé par McCabe (jusqu'à 15 avec justification, NIST SP 500-235) : une 
+recommandation, pas une loi (Voir la dette technique)
+39
+=== PAGE 40 ===
+Chemins de base
+◦ Un ensemble de chemins de base contient V(G) chemins linéairement indépendants : chacun emprunte au moins une arête que les 
+précédents n'empruntaient pas
+◦ Méthode de McCabe : partir d'un chemin de référence, puis inverser une seule décision à la fois
+Chemin de base Construction Données Attendu
+B1 : 1-2-3-4-5-6 Chemin de référence (D1 V, D2 V) Adhérent, 200 DT, 0 point 175 DT
+B2 : 1-2-4-5-6 On inverse D1 Non adhérent, 50 DT, 600 points 45 DT
+B3 : 1-2-3-4-6 On inverse D2 Adhérent, 120 DT, 0 point 108 DT
+V(G) = 3 chemins de base ; tout autre chemin se combine à partir d'eux
+40
+=== PAGE 41 ===
+Complexité cyclomatique : ce qu'elle n'est pas
+◦ Erreur fréquente : « V(G) est le nombre minimal de tests pour la couverture des branches » ou « le nombre de chemins »
+◦ Nombre de tests nécessaires pour l’exemple, qui a V(G) = 3
+Critère Tests nécessaires Exemple de jeu
+Instructions 1 Adhérent, 200 DT, 0 point
+Branches 2 + non adhérent, 50 DT, 0 point
+Chemins de base 3 = V(G) B1, B2, B3
+Tous les chemins 4 Les 4 chemins
+V(G) majore le nombre de tests nécessaires pour 100 % des branches ; il ne compte pas tous les chemins
+41
+=== PAGE 42 ===
+Test des boucles : boucle simple
+◦ Pour une boucle qui s'exécute au plus n fois, on teste le nombre d'itérations suivant (B. Beizer)
+◦ Exemple : le total d'une liste de « Liste de Courses », limitée à 100 articles
+Nombre d'itérations Ce qu'on vérifie Exemple de test
+0 La boucle est sautée Liste vide : total 0 DT
+1 Un seul passage Un article
+2 Le cumul entre deux passages Deux articles
+m, avec 2 < m < n Un cas typique 30 articles
+n − 1, n La limite haute 99 et 100 articles
+n + 1 Le dépassement Ajout d'un 101e article : refusé
+n − 1, n et n + 1 sont des valeurs limites (chapitre 8)
+42
+=== PAGE 43 ===
+Test des boucles : imbriquées et concaténées
+Boucles imbriquées (B. Beizer)
+◦ 1. Tester la boucle la plus interne comme une boucle simple, les boucles externes réglées sur leur minimum
+◦ 2. Remonter d'un niveau : la boucle interne prend une valeur typique ; recommencer jusqu'à la boucle la plus 
+externe
+◦ Exemple : imprimer la liste par rayon : boucle sur les rayons, et dans chaque rayon, boucle sur les articles. D'abord 1 
+rayon avec 0, 1, 2... articles ; puis 0, 1, 2... rayons de 3 articles
+Boucles concaténées (l'une après l'autre)
+◦ Indépendantes : chacune se teste comme une boucle simple
+◦ Dépendantes, la seconde utilisant un résultat de la première : comme des boucles imbriquées
+Le nombre de chemins se borne en limitant chaque boucle à k itérations
+43
+=== PAGE 44 ===
+Test du flot de données
+44
+=== PAGE 45 ===
+Flot de données : définitions
+◦ Définition (def) : la variable reçoit une valeur. Utilisation : sa valeur est lue, dans un calcul (c-use) ou dans une décision 
+(p-use)
+◦ Paire def-utilisation : une définition et une utilisation reliées par un chemin sans redéfinition de la variable
+◦ Exemple : les 3 définitions de la variable remise dans l’exemple
+Définition de remise Utilisations atteintes Test qui exerce la paire
+d1 : remise = 0 p-use dans D2 ; c-use dans remise + 5 ; c-use dans le return Non adhérent, 50 DT, 0 point (D2 et return) ; non adhérent, 50 DT, 600 points (remise + 5)
+d2 : remise = total × 0,10 p-use dans D2 ; c-use dans remise + 5 ; c-use dans le return Adhérent, 200 DT, 0 point (D2 et remise + 5) ; adhérent, 120 DT, 0 point (return)
+d3 : remise = remise + 5 c-use dans le return Adhérent, 200 DT, 0 point
+7 paires def-utilisation pour remise
+45
+=== PAGE 46 ===
+Flot de données : anomalies
+◦ Une anomalie de flot de données est une suite suspecte de définitions et d'utilisations. Elle se détecte sans exécuter le 
+code
+◦ Aujourd'hui, compilateurs et analyseurs statiques les signalent (partie I)
+Anomalie Exemple Détection actuelle
+Utilisée sans être définie double remise; if (adherent) remise = 10; return total - remise; Java : refus de compiler (« might not have been initialized »). Python : pylint possibly-used-before-assignment, sinon UnboundLocalError
+Définie, jamais utilisée double tva = total * 0.19; jamais lue Avertissement de l'IDE ; pylint unused-variable ; règle SonarQube
+Définie deux fois sans utilisation remise = 0; remise = 5; SonarQube : affectation inutile (dead store)
+Une anomalie n'est pas toujours un défaut, mais elle mérite toujours une explication
+46
+=== PAGE 47 ===
+Flot de données : critères de couverture
+◦ Critères de Rapps et Weyuker (1985), du plus faible au plus fort, avec le nombre de tests nécessaires pour l’exemple
+Critère Ce qu'il exige L’exemple
+Toutes les définitions (all-defs) Chaque définition atteint au moins une de ses utilisations 2 tests
+Toutes les p-utilisations (all-p-uses) Chaque définition atteint chacune de ses utilisations dans une décision, par les deux branches 4 tests
+Toutes les utilisations (all-uses) Chaque paire def-utilisation est exercée 4 tests
+Tous les chemins def-utilisation (all-du-paths) Chaque chemin sans boucle entre une définition et une utilisation est exercé 4 tests
+Hiérarchie : tous les chemins → all-du-paths → all-uses → all-p-uses → branches. Aucun outil courant ne les mesure en Java ou en
+Python
+47
+=== PAGE 48 ===
+La couverture en pratique
+48
+=== PAGE 49 ===
+Outils de mesure de la couverture
+◦ L'outil instrumente le code, exécute les tests, puis produit un rapport qui colore chaque ligne
+Outil Langage Ce qu'il mesure Exemple de commande
+JaCoCo Java Instructions du bytecode, lignes, branches, complexité cyclomatique mvn test jacoco:report
+coverage.py (pytest-cov) Python Lignes, branches (arcs entre lignes) pytest --cov=liste --cov-branch --cov- report=html
+GCC 14, Clang 18 C, C++ Lignes, branches, conditions MC/DC gcc -fcondition-coverage ; clang - fcoverage-mcdc
+Rapport JaCoCo : vert = exécuté, jaune = branches partiellement couvertes, rouge = jamais exécuté
+49
+=== PAGE 50 ===
+Outils : ce qu'ils comptent vraiment
+Une même ligne, deux comptes différents
+◦ Ligne étudiée : if (adherent && total >= 100), exécutée par le seul test « non adhérent, 50 DT, 0 point »
+JaCoCo (Java)
+◦ Le && produit deux sauts conditionnels dans le bytecode, soit 4 branches => « 3 of 4 branches missed »
+◦ JaCoCo voit donc les conditions : ses branches ressemblent à la couverture des conditions avec court-circuit
+coverage.py (Python)
+◦ Il compte les arcs entre lignes : la ligne du if a 2 arcs de sortie => 1 sur 2
+◦ Les conditions d'une même ligne sont invisibles
+Avant de comparer deux pourcentages, vérifier ce que chaque outil compte
+50
+=== PAGE 51 ===
+Combien de couverture viser ?
+Pas de chiffre universel, mais des repères
+◦ Google (Testing Blog, 2020) : 60 % acceptable, 75 % louable, 90 % exemplaire
+◦ SonarQube, profil « Sonar way » : au moins 80 % de couverture sur le code nouveau
+◦ Logiciel critique : critère imposé par la norme (instructions, décisions ou MC/DC selon le niveau DO-178C)
+Loi de Goodhart
+◦ « Quand une mesure devient un objectif, elle cesse d'être une bonne mesure »
+◦ Exemple de test qui couvre sans tester : le test qui appelle montantAPayer(200, true, 0) sans aucune assertion donne 
+100 % des instructions et ne vérifie rien
+Une couverture faible prouve un manque ; une couverture élevée ne prouve rien
+51
+=== PAGE 52 ===
+Bon usage de la couverture
+Lire le rapport comme une liste de questions
+◦ Pour chaque ligne rouge : test manquant ? code mort à supprimer ? exigence oubliée dans la spécification ?
+Mesurer là où le risque est
+◦ Couverture du code nouveau ou modifié (diff coverage) dans la revue de code, plutôt qu'un pourcentage global
+◦ Exigence plus forte pour les modules critiques : paiement, calcul de remise
+Compléter par des mesures d'efficacité
+◦ La couverture dit ce qui a été exécuté ; le test de mutation dit ce qui a été vérifié
+Exécuter n'est pas vérifier
+52
+=== PAGE 53 ===
+Test de mutation
+53
+=== PAGE 54 ===
+Test de mutation : principe
+Idée (DeMillo, Lipton et Sayward, 1978)
+◦ Introduire volontairement une petite faute dans le code : chaque version modifiée est un mutant
+◦ Exécuter la suite de tests sur chaque mutant : si au moins un test échoue, le mutant est tué ; sinon, il survit
+◦ Score de mutation = mutants tués / (mutants générés − mutants équivalents)
+Deux hypothèses
+◦ Programmeur compétent : le code est proche du code correct ; les fautes réelles sont de petites erreurs
+◦ Effet de couplage : des tests qui détectent les fautes simples détectent aussi la plupart des fautes complexes
+La mutation évalue les tests, pas le code : un mutant survivant désigne une vérification qui manque
+54
+=== PAGE 55 ===
+Test de mutation : opérateurs usuels
+◦ Un opérateur de mutation décrit une transformation qui imite une erreur fréquente de programmation
+Opérateur Code original Mutant Faute imitée
+Limite de comparaison total >= 100 total > 100 Erreur d'une unité à la limite
+Négation de condition points >= 500 points < 500 Condition inversée
+Opérateur logique adherent && total >= 100 adherent || total >= 100 Confusion ET / OU
+Opérateur arithmétique remise + 5 remise - 5 Mauvais signe
+Valeur de retour return total - remise; return 0; Résultat ignoré
+Suppression d'instruction remise = remise + 5; (ligne supprimée) Instruction oubliée
+55
+=== PAGE 56 ===
+Test de mutation : exemple
+◦ Suite évaluée : les 2 tests qui donnent 100 % des branches. T1 : adhérent, 200 DT, 0 point => 175 DT ; T2 : non adhérent, 
+50 DT, 0 point => 50 DT
+Mutant Modification Résultat
+M1 total >= 100 devient total > 100 Survit
+M2 && devient || dans D1 Survit
+M3 remise + 5 devient remise - 5 Tué par T1 (185 DT)
+M4 remise > 15 devient remise >= 15 Survit
+M5 points >= 500 devient points > 500 Survit
+M6 total - remise devient total + remise Tué par T1 (225 DT)
+M7 total * 0.10 devient total / 0.10 Tué par T1
+M8 || devient && dans D2 Tué par T1 (180 DT)
+M9 Suppression de remise = remise + 5 Tué par T1 (180 DT)
+Score : 5 / 9 = 56 %, avec 100 % des branches
+56
+D1: adherent && total >= 100
+D2: points >= 500 || remise > 15
+=== PAGE 57 ===
+Test de mutation : tuer les survivants
+◦ Pour chaque survivant, on cherche une entrée où le mutant et l'original donnent des résultats différents, puis on écrit le 
+test avec le résultat attendu
+Survivant Test ajouté Original Mutant Technique retrouvée
+M1 : total > 100 Adhérent, 100 DT, 0 point 90 DT 100 DT Valeur limite (chapitre 8)
+M2 : || dans D1 Non adhérent, 200 DT, 0 point 200 DT 175 DT Paire MC/DC de C1
+M4 : remise >= 15 Adhérent, 150 DT, 0 point 135 DT 130 DT Valeur limite
+M5 : points > 500 Non adhérent, 50 DT, 500 points 45 DT 50 DT Valeur limite
+57
+=== PAGE 58 ===
+Test de mutation : mutants équivalents et coût
+Mutant équivalent
+◦ Mutant qui se comporte exactement comme l'original : aucun test ne peut le tuer
+◦ Exemple : for (int i = 0; i < n; i++) devient for (int i = 0; i != n; i++) : la boucle fait exactement les mêmes itérations
+◦ Le repérer automatiquement est indécidable en général => analyse humaine, puis exclusion du calcul du score
+Coût
+◦ Chaque mutant demande une exécution de la suite : des centaines de mutants par module
+◦ Les outils n'exécutent que les tests qui couvrent la ligne mutée, et seulement sur le code modifié
+◦ Exemple : chez Google, les mutants survivants des lignes modifiées sont affichés dans la revue de code (Petrović et 
+Ivanković, 2018)
+58
+=== PAGE 59 ===
+Test de mutation : outils
+◦ Les outils génèrent les mutants, exécutent les tests et produisent un rapport des survivants, ligne par ligne
+Outil Langage Exemple de commande Particularité
+PIT (pitest) Java mvn org.pitest:pitest- maven:mutationCoverage N'exécute que les tests qui couvrent chaque mutant ; rapport HTML
+mutmut Python mutmut run, puis mutmut browse Fonctionne avec pytest ; reprend là où il s'est arrêté
+Stryker JavaScript, TypeScript, C#, Scala npx stryker run Tableau de bord des scores
+Rq : lancer la mutation sur un module à la fois, pas sur tout le projet
+59
+=== PAGE 60 ===
+Activité 2 
+individuelle
+Objectif : évaluer une suite de tests par la mutation
+Contexte : fraisLivraison de l'activité 1, avec la suite TA, TB, TC :
+◦ TA : Premium, 1 article à 10 DT, Sfax => 0 DT ; TB : non Premium, 1 
+article à 20 DT, Sfax => 7,900 DT ; TC : idem, GRAND_TUNIS => 4,900 DT
+◦ A1 : total >= 50 devient total > 50.  A2 : || devient &&
+◦ A3 : return 4.900 devient return 0.  A4 : prix * quantite devient prix / 
+quantite
+◦ A5 : la condition sur la zone est inversée.  A6 : total += devient total -=
+Travail demandé :
+◦ 1. Pour chaque mutant : tué ou survivant ? Par quel test ?
+◦ 2. Calculer le score de mutation
+◦ 3. Écrire le plus petit nombre de tests qui tuent tous les survivants
+◦ 4. Quelle technique du chapitre 8 aurait produit ces tests ?
+60
+1   total = 0
+2article suivant ?
+V
+3   total += prix × qté
+retour
+F
+4premium || total >= 50
+V
+5   return 0
+F
+6zone = GRAND_TUNIS
+V
+7   return 4,900
+F
+8   return 7,900 9 fin
+=== PAGE 61 ===
+Activité 
+2
+Exemple de réponse
+◦ A2 est tué par TA ; A3 par TC ; A5 par TB et TC. A1, A4 et A6 survivent => score 3 / 6 = 50 %, malgré 100 % des branches
+Survivant Pourquoi il survit Test qui le tue
+A1 : total > 50 Aucun test n'a un total d'exactement 50 DT Non Premium, 2 articles à 25 DT, Sfax => 0 DT (mutant : 7,900 DT)
+A4 : prix / quantite Toutes les quantités valent 1 : prix × 1 = prix / 1 Le même test : 25 / 2 = 12,5 DT => mutant 7,900 DT
+A6 : total -= Aucun test non Premium n'atteint 50 DT Le même test : total de -50 DT => mutant 7,900 DT
+Un seul test suffit : la valeur limite 50 DT, avec une quantité différente de 1
+61
+=== PAGE 62 ===
+Oracle et test par propriétés
+62
+=== PAGE 63 ===
+Le problème de l'oracle en boîte blanche
+Rappel
+◦ L'oracle donne le résultat attendu ; sans oracle, un test exécute le code mais ne vérifie rien
+Le piège de la boîte blanche
+◦ Les données de test viennent du code ; le résultat attendu, lui, doit venir de la spécification
+◦ Un résultat attendu recopié depuis l'exécution du code décrit ce que fait le code, pas ce qu'il devrait faire => le 
+test valide les défauts
+Qui tombe dans ce piège ?
+◦ Les générateurs de tests (EvoSuite, Pynguin, Randoop) : leurs assertions enregistrent le comportement actuel => 
+utiles pour la non-régression
+◦ Une IA à qui l'on donne seulement le code : même effet
+Le code ne peut pas être son propre oracle
+63
+=== PAGE 64 ===
+Test par propriétés : principe
+Idée (QuickCheck, Claessen et Hughes, 2000)
+◦ Au lieu d'un résultat exact pour une entrée, on énonce une propriété vraie pour toutes les entrées
+◦ L'outil génère des centaines d'entrées ; s'il trouve un contre-exemple, il le réduit au plus simple (shrinking)
+Exemples de propriétés pour montantAPayer, tirées de la spécification
+◦ Le montant à payer n'est jamais négatif
+◦ Le montant à payer ne dépasse jamais le total
+◦ Pour un non-adhérent, la remise vaut 0 ou 5 DT
+Outils
+◦ Hypothesis (Python), jqwik (Java, avec JUnit 5)
+64
+=== PAGE 65 ===
+Test par propriétés : exemple
+◦ Les 9 mutants sont tués, les 4 chemins sont couverts... Alors que:
+Propriété « jamais négatif » - Java, jqwik Propriété « jamais négatif » - Python, Hypothesis
+@Property
+void montantJamaisNegatif(
+    @ForAll @DoubleRange(min = 0, max = 1000)
+        double total,
+    @ForAll boolean adherent,
+    @ForAll @IntRange(min = 0, max = 5000)
+        int points) {
+  assertTrue(montantAPayer(total, adherent,
+                          points) >= 0);
+}
+from hypothesis import given
+from hypothesis import strategies as st
+ 
+@given(total=st.floats(min_value=0, max_value=1000),
+       adherent=st.booleans(),
+       points=st.integers(min_value=0, max_value=5000))
+def test_montant_jamais_negatif(total, adherent,
+                                points):
+    assert montant_a_payer(total, adherent,
+                           points) >= 0
+Contre-exemple trouvé : total = 0, non adhérent, 500 points => montant de −5 DT. La règle ne plafonne pas la remise au total
+65
+=== PAGE 66 ===
+Relations métamorphiques
+Quand le résultat exact est inconnu
+◦ Une relation métamorphique relie les résultats de plusieurs exécutions, sans connaître aucun d'eux
+◦ Exemple : dans « Liste de Courses », changer l'ordre des articles ne change pas le total ; ajouter un article gratuit non 
+plus
+◦ Exemple : pour un classifieur ou un LLM, reformuler une question sans en changer le sens ne change pas la catégorie 
+prédite
+Appliquée à l’exemple
+◦ Relation : si le total augmente, le montant à payer ne diminue pas
+◦ Elle est violée : adhérent avec 150 DT => 135 DT ; avec 151 DT => 130,900 DT. Acheter plus fait payer moins
+Effet de seuil voulu ou défaut ? Seul le métier peut trancher
+66
+=== PAGE 67 ===
+Synthèse
+67
+=== PAGE 68 ===
+Synthèse : un même code, plusieurs critères
+◦ Nombre de tests nécessaires pour chaque critère sur montantAPayer, et ce que chaque critère apporte
+Critère Tests Ce qu'il apporte
+Instructions 1 Tout le code a été exécuté une fois
+Branches 2 Chaque décision a pris V et F
+Conditions + décisions 2 (évaluation complète) Chaque condition a pris V et F
+MC/DC 3 Chaque condition a montré son effet propre
+Conditions multiples 5 Toutes les combinaisons de conditions
+Chemins (= all-uses ici) 4 Toutes les suites de décisions
+Mutation (9 mutants) 3 bien choisis Les tests vérifient les limites
+Aucun de ces critères n'a trouvé le montant négatif : il fallait la spécification
+68
+=== PAGE 69 ===
+Récap
+◦ Flot de contrôle : du plus faible au plus fort, instructions, branches, décision/condition, MC/DC, conditions multiples ; les 
+chemins sont un idéal rarement atteignable
+◦ Chemins et boucles: V(G) chemins de base ; boucles testées à 0, 1, 2, typique, n − 1, n, n + 1
+◦ Flot de données : chaque valeur calculée doit être utilisée ; les anomalies se détectent statiquement
+◦ Couverture : un outil qui mesure, pas un objectif ; analyser chaque partie non couverte
+◦ Mutation : mesure ce que les tests vérifient ; les survivants désignent les tests manquants
+◦ Oracle : le résultat attendu vient de la spécification ; propriétés et relations métamorphiques quand il est inconnu
+69
+=== PAGE 70 ===
+Activité 3 en 
+groupe
+Objectif : auditer une suite de tests générée par une IA à partir du 
+code
+Spécification : fusionner deux listes de courses {produit : quantité}
+◦ Les noms de produits se comparent sans tenir compte des majuscules ; 
+le nom gardé est celui de la première liste
+◦ Un produit présent dans les deux listes prend la somme des quantités, 
+plafonnée à 99
+◦ Les deux listes d'origine ne sont pas modifiées
+Travail demandé (code et suite sur les diapositives suivantes) :
+◦ 1. Mesurer la couverture des instructions et des branches de la suite
+◦ 2. Proposer 4 mutants et dire lesquels survivent
+◦ 3. Repérer les tests dont l'assertion est faible ou contraire à la 
+spécification
+◦ 4. Écrire les tests manquants, avec un résultat attendu tiré de la 
+spécification
+Activité de synthèse
+70
+=== PAGE 71 ===
+Activité 
+3 
+: le code à tester
+Fusion de deux listes — Java Fusion de deux listes — Python
+static Map<String, Integer> fusionnerListes(
+        Map<String, Integer> a,
+        Map<String, Integer> b) {
+    Map<String, Integer> resultat = new HashMap<>(a);
+    for (var e : b.entrySet()) {
+        String produit = e.getKey();
+        int qte = e.getValue();
+        if (resultat.containsKey(produit)) {
+            int somme = resultat.get(produit) + qte;
+            resultat.put(produit, Math.min(somme, 99));
+        } else {
+            resultat.put(produit, qte);
+        }
+    }
+    return resultat;
+}
+def fusionner_listes(a: dict[str, int],
+                     b: dict[str, int]) -> dict[str, int]:
+    resultat = dict(a)
+    for produit, qte in b.items():
+        if produit in resultat:
+            somme = resultat[produit] + qte
+            resultat[produit] = min(somme, 99)
+        else:
+            resultat[produit] = qte
+    return resultat
+71
+=== PAGE 72 ===
+Activité 
+3 
+: la suite générée par l'IA
+Suite générée — Java, JUnit 5 Suite générée — Python, pytest
+@Test void listesVides() {
+  assertEquals(Map.of(),
+      fusionnerListes(Map.of(), Map.of()));
+}
+@Test void produitNouveau() {
+  assertEquals(Map.of("Lait", 1, "Pain", 2),
+      fusionnerListes(Map.of("Lait", 1),
+                      Map.of("Pain", 2)));
+}
+@Test void produitCommun() {
+  var r = fusionnerListes(Map.of("Lait", 1),
+                          Map.of("Lait", 2));
+  assertTrue(r.containsKey("Lait"));
+}
+@Test void nomsDifferents() {
+  assertEquals(Map.of("Lait", 1, "lait", 2),
+      fusionnerListes(Map.of("Lait", 1),
+                      Map.of("lait", 2)));
+}
+def test_listes_vides():
+    assert fusionner_listes({}, {}) == {}
+ 
+def test_produit_nouveau():
+    assert fusionner_listes(
+        {"Lait": 1}, {"Pain": 2}
+    ) == {"Lait": 1, "Pain": 2}
+ 
+def test_produit_commun():
+    resultat = fusionner_listes(
+        {"Lait": 1}, {"Lait": 2})
+    assert "Lait" in resultat
+ 
+def test_noms_differents():
+    assert fusionner_listes(
+        {"Lait": 1}, {"lait": 2}
+    ) == {"Lait": 1, "lait": 2}
+72
+=== PAGE 73 ===
+Activité 
+3
+Exemple de réponse : couverture et mutants
+◦ La suite couvre 100 % des instructions et 100 % des branches : boucle sautée, produit nouveau, produit commun
+Mutant Résultat Pourquoi
+Plafond 99 devient 100 Survit Aucun test n'atteint le plafond
+somme = ... + qte devient ... - qte Survit produitCommun vérifie seulement que « Lait » existe
+Copie de a remplacée par a lui-même Survit en Python Aucun test ne vérifie que a est inchangée (en Java, Map.of est immuable : le mutant lève une exception, tué par hasard)
+Condition « produit présent » inversée Tué produitNouveau échoue
+Score en Python : 1 / 4, avec 100 % des branches
+73
+=== PAGE 74 ===
+Activité
+ 3
+Exemple de réponse : tests à corriger et à ajouter
+◦ Le test nomsDifferents valide le défaut : la spécification demande de fusionner « Lait » et « lait »
+Test Données Résultat attendu (spécification)
+nomsDifferents corrigé {Lait : 1} et {lait : 2} {Lait : 3} => échoue : défaut trouvé
+produitCommun renforcé {Lait : 1} et {Lait : 2} {Lait : 3}
+Plafond {Riz : 98} et {Riz : 1} ; {Riz : 60} et {Riz : 50} {Riz : 99} ; {Riz : 99}
+Listes d'origine a = {Lait : 1}, fusionnée avec {Lait : 2} a vaut toujours {Lait : 1}
+Boucle à 2 itérations {Lait : 1} et {Pain : 2, Lait : 3} {Lait : 4, Pain : 2}
+L'IA a couvert le code ; elle n'a pas testé la spécification
+74

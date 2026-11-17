@@ -1,0 +1,689 @@
+=== PAGE 1 ===
+Conception des Tests : Techniques Boîte Noire 
+et Basées sur l'Expérience
+Chapitre 8
+Cours Qualité et Test Logiciels 
+–
+ II3
+-
+GL
+Dr-Ing. Sihem Ben Sassi
+=== PAGE 2 ===
+Plan
+◦ Introduction
+◦ Partitions d'équivalence
+◦ Analyse des valeurs limites
+◦ Tables de décision et graphes cause-effet
+◦ Test de transition d'états
+◦ Techniques basées sur l'expérience
+◦ Approche collaborative et choix des techniques
+2
+=== PAGE 3 ===
+Objectifs du chapitre
+Après avoir terminé ce chapitre, vous serez en mesure de :
+◦ Expliquer le rôle d'une technique de conception et mesurer la couverture atteinte
+◦ Découper un domaine en partitions valides et invalides, y compris selon le comportement attendu
+◦ Appliquer l'analyse des valeurs limites à 2 et à 3 valeurs
+◦ Construire un graphe cause-effet et en déduire une table de décision simplifiée
+◦ Modéliser un comportement en états et transitions, et viser un niveau de couverture
+◦ Conduire une session de test exploratoire à partir d'une charte
+◦ Rédiger des critères d'acceptation testables
+◦ Choisir et combiner les techniques ; critiquer des cas de test produits par une IA
+3
+=== PAGE 4 ===
+Introduction
+4
+=== PAGE 5 ===
+Introduction : les techniques de conception
+Rappel (chapitre 7)
+◦ Le test exhaustif est impossible : tester 12 filtres de recherche à 5 valeurs chacun demanderait 244 millions de 
+combinaisons
+Technique de conception de test
+◦ Règle systématique pour choisir un petit nombre de cas de test représentatifs, capables de trouver des défauts
+◦ Elle désigne les éléments à couvrir (partitions, limites, règles...) => la couverture se mesure : éléments exercés / éléments
+identifiés
+Trois familles de techniques (ISTQB)
+◦ Boîte noire : les tests se déduisent de la spécification, sans regarder le code (ce chapitre)
+◦ Boîte blanche : les tests se déduisent de la structure du code (chapitre 9)
+◦ Basées sur l'expérience : les tests se déduisent du savoir-faire du testeur (ce chapitre)
+◦ Les deux premières relèvent d'une conception par critère, mesurable ; la troisième d'une conception humaine. Elles se 
+complètent (Ammann et Offutt)
+5
+=== PAGE 6 ===
+Introduction : le test boîte noire
+Principe
+◦ Le logiciel est vu uniquement par ses interfaces : on lui fournit des entrées et on compare ses sorties à celles que 
+prévoit la spécification
+Avantages
+◦ Pas besoin du code source ; applicable à tous les niveaux, du composant à l'acceptation
+◦ Trouve les fonctions manquantes et les écarts à la spécification
+Limites
+◦ Les fonctions non décrites dans la spécification (cachées) ne sont pas testées
+◦ Correction par coïncidence : deux défauts peuvent se compenser et donner la bonne réponse
+◦ Aucune maîtrise de la part du code exécutée => boîte blanche (chapitre 9)
+◦ Exemple : le total d'une liste est juste parce qu'une remise oubliée compense un arrondi faux : le test réussit alors que 
+deux défauts restent dans le code
+6
+=== PAGE 7 ===
+Partitions d'équivalence
+7
+=== PAGE 8 ===
+Partitions d'équivalence : principe
+Définition
+◦ Découper le domaine des entrées (ou des sorties) en partitions, dont tous les éléments sont censés être traités de 
+la même façon par le logiciel
+◦ Hypothèse : si une valeur d'une partition révèle un défaut, toute autre valeur de la même partition le révèle aussi 
+=> un seul représentant par partition suffit
+Propriétés
+◦ Les partitions sont disjointes et leur union couvre tout le domaine => chaque valeur appartient à exactement une 
+partition
+◦ Partitions valides : valeurs que le logiciel doit accepter ; partitions invalides : valeurs qu'il doit refuser ou traiter à 
+part
+◦ Exemple : une quantité de produit comprise entre 1 et 99 : les quantités 3, 17 et 42 sont traitées de la même façon ; 
+tester l'une d'elles suffit
+8
+=== PAGE 9 ===
+Partitions d'équivalence : entrées attendues et inattendues
+◦ Le domaine des entrées se divise d'abord en entrées attendues (E) et inattendues (U), puis chacune selon les comportements 
+différents qu'exige la spécification
+◦ Exemple : une application reçoit un âge entier. De 1 à 61, elle applique l'exigence R1 ; de 62 à 120, l'exigence R2 ; les valeurs < 1 
+et > 120 sont refusées, chacune avec son propre message
+U1 : âge < 1
+Inattendues (U)
+E1 : de 1 à 61
+exigence R1
+Entrées attendues (E)
+E2 : de 62 à 120
+exigence R2 U2 : âge > 120
+Inattendues (U)
+-5 30 99 500
+4 partitions => 4 cas de test, un représentant par partition : -5, 30, 99 et 500 (d'après A. P. Mathur)
+9
+=== PAGE 10 ===
+Partitions d'équivalence : la méthode
+Méthode en trois étapes (G. J. Myers)
+◦ 1. Pour chaque condition d'entrée, lister les partitions valides et invalides, et donner un numéro à chacune
+◦ 2. Écrire des cas de test qui couvrent chacun le plus possible de partitions valides pas encore couvertes
+◦ 3. Écrire un cas de test par partition invalide, en ne mettant qu'une seule valeur invalide à la fois
+Pourquoi une seule partition invalide par cas de test
+◦ Le logiciel s'arrête souvent au premier contrôle d'erreur : les contrôles suivants ne sont alors jamais exécutés
+◦ Exemple : si l'on saisit à la fois une quantité de 0 et une catégorie inconnue, seul le message « quantité invalide » 
+apparaît ; la vérification de la catégorie n'a pas été testée
+10
+=== PAGE 11 ===
+Partitions d'équivalence : exemple
+◦ Exemple de cas de test pour l'ajout d'un produit dans « Liste de Courses », qui demande une quantité et une catégorie
+◦ Quantité, entier de 1 à 99 : partition valide Q1 ; partitions invalides Q2 (< 1), Q3 (> 99), Q4 (non entier)
+◦ Catégorie, l'une des 20 du catalogue : partition valide C1 ; partition invalide C2 (catégorie inconnue)
+Cas de test Quantité Catégorie Partitions couvertes Résultat attendu
+TC1 3 Fruits Q1, C1 Produit ajouté
+TC2 0 Fruits Q2 Message « quantité invalide »
+TC3 100 Fruits Q3 Message « quantité invalide »
+TC4 2,5 Fruits Q4 Message « quantité invalide »
+TC5 3 Jouets C2 Message « catégorie inconnue »
+TC1 couvre les deux partitions valides ; chaque cas suivant couvre une seule partition invalide. 6 partitions sur 6 couvertes : 100 %
+11
+=== PAGE 12 ===
+Partitions d'équivalence : couverture
+Mesure de la couverture (ISTQB)
+◦ Couverture des partitions = partitions exercées par au moins un test / partitions identifiées
+Cas de plusieurs paramètres
+◦ Couverture « chaque choix » (each choice) : chaque partition de chaque paramètre est exercée au moins une fois, 
+sans chercher à tester les combinaisons
+◦ Le nombre minimal de cas est alors celui du paramètre qui a le plus de partitions
+Au-delà : le test combinatoire
+◦ Tester chaque paire de valeurs (test par paires) : technique décrite par l'ISTQB Advanced Test Analyst et par la 
+norme ISO/IEC/IEEE 29119-4
+◦ Exemple : pour 12 filtres à 5 valeurs : 5 cas suffisent en « chaque choix », quelques dizaines par paires, contre 244 
+millions de combinaisons
+12
+=== PAGE 13 ===
+Partitions d'équivalence : l'exemple NextDate (1/4)
+Spécification
+◦ La fonction NextDate(jour, mois, année) renvoie la date du lendemain ; l'année est comprise entre 1900 et 2100 (exemple adapté 
+de P. C. Jorgensen)
+Premier découpage, à partir des plages d'entrée uniquement
+Condition Partition valide Partitions invalides
+Jour 1 ≤ jour ≤ 31 (J1) jour < 1 (J2) ; jour > 31 (J3)
+Mois 1 ≤ mois ≤ 12 (M1) mois < 1 (M2) ; mois > 12 (M3)
+Année 1900 ≤ année ≤ 2100 (A1) année < 1900 (A2) ; année > 2100 (A3)
+Ce découpage donne 7 cas de test : 1 valide et 6 invalides. Suffisent-ils pour tester NextDate ?
+13
+=== PAGE 14 ===
+Partitions d'équivalence : l'exemple NextDate (2/4)
+Ce que le premier découpage ne voit pas
+◦ Le lendemain dépend de la fin du mois (30 ou 31 jours), de février (28 ou 29 jours) et de la fin de l'année
+◦ Février a 29 jours les années bissextiles : années divisibles par 4, sauf les siècles qui ne sont pas divisibles par 400
+Fonction année bissextile — Java Fonction année bissextile — Python
+static boolean isLeapYear(int year) {
+    return (year % 4 == 0
+            && year % 100 != 0)
+        || year % 400 == 0;
+}
+def est_bissextile(annee: int) -> bool:
+    return ((annee % 4 == 0
+             and annee % 100 != 0)
+            or annee % 400 == 0)
+2000 est bissextile ; 1900 et 2100 ne le sont pas. Une seule partition « année valide » ne distingue pas ces cas.
+14
+=== PAGE 15 ===
+Partitions d'équivalence : l'exemple NextDate (3/4)
+Second découpage, selon le comportement attendu
+◦ On découpe chaque entrée selon les comportements différents qu'elle déclenche dans le calcul du lendemain
+Condition Partitions valides
+Mois M1 : mois de 31 jours {1, 3, 5, 7, 8, 10, 12} ; M2 : mois de 30 jours {4, 6, 9, 11} ; M3 : février
+Jour J1 : de 1 à 27 ; J2 : 28 ; J3 : 29 ; J4 : 30 ; J5 : 31
+Année A1 : bissextile ordinaire (2024) ; A2 : siècle bissextile (2000) ; A3 : siècle non bissextile (1900, 2100) ; A4 : non bissextile (2025)
+Les partitions se déduisent aussi des sorties et des règles métier, pas seulement des plages d'entrée
+15
+=== PAGE 16 ===
+Partitions d'équivalence : l'exemple NextDate (4/4)
+◦ Cas de test issus du second découpage : chacun combine une partition du jour, du mois et de l'année, et vise une situation à 
+risque
+Date en entrée Partitions couvertes Lendemain attendu
+15/06/2025 J1, M2, A4 16/06/2025 : cas courant
+30/04/2025 J4, M2, A4 01/05/2025 : fin d'un mois de 30 jours
+31/12/2025 J5, M1, A4 01/01/2026 : fin d'année
+28/02/2024 J2, M3, A1 29/02/2024 : février d'une année bissextile
+28/02/2000 J2, M3, A2 29/02/2000 : siècle bissextile
+28/02/2100 J2, M3, A3 01/03/2100 : siècle non bissextile
+29/02/2024 J3, M3, A1 01/03/2024 : fin de février bissextile
+31/04/2025 J5, M2 Erreur « date invalide » : avril n'a que 30 jours
+16
+=== PAGE 17 ===
+Partitions d'équivalence : le test syntaxique
+Principe
+◦ Quand une entrée doit respecter un format décrit par une 
+grammaire (notation BNF), les partitions se déduisent de chaque 
+élément de la grammaire (ISO/IEC/IEEE 29119-4)
+Méthode
+◦ Pour chaque élément : partitions valides et invalides, numérotées
+◦ Quelques cas valides qui couvrent toutes les partitions valides
+◦ Un cas de test par partition invalide
+Usages
+◦ Codes promo, identifiants, adresses e-mail, formats de fichier
+Exemple : la grammaire d'un code promo
+<code>      ::= <préfixe> "-" <remise>
+<préfixe>   ::= <lettre> <alphanum {1..9}>
+<remise>    ::= <chiffre> <chiffre>
+<lettre>    ::= "A" | "B" | ... | "Z"
+<alphanum>  ::= <lettre> | <chiffre>
+<chiffre>   ::= "0" | "1" | ... | "9"
+ 
+Codes valides : NEWYEAR-10   B2B-05
+Un code promo s'écrit : un préfixe de 2 à 10 lettres majuscules ou 
+chiffres, commençant par une lettre, un tiret, puis le taux de 
+remise sur deux chiffres.
+17
+=== PAGE 18 ===
+Partitions d'équivalence : le test syntaxique (partitions)
+◦ Pour chaque élément de la grammaire du code promo, on liste les partitions valides et invalides, numérotées de 1 à 17
+Élément du code promo Partitions valides Partitions invalides
+Préfixe : premier caractère une lettre (1) un chiffre (2) ; préfixe absent (3)
+Préfixe : contenu lettres et chiffres (4) caractère spécial (5)
+Préfixe : longueur 2 à 10 caractères (6) 1 caractère (7) ; plus de 10 (8)
+Préfixe : casse majuscules (9) minuscules (10)
+Séparateur tiret présent (11) absent (12) ; autre caractère (13)
+Remise deux chiffres (14) un chiffre (15) ; trois chiffres (16) ; non numérique (17)
+18
+=== PAGE 19 ===
+Partitions d'équivalence : le test syntaxique (cas de test)
+◦ Exemple de cas de test pour le code promo : un code valide couvre les 6 partitions valides, puis chaque code invalide couvre une
+seule partition invalide
+Code saisi Partitions couvertes Code saisi Partition couverte
+NEWYEAR25-10 1, 4, 6, 9, 11, 14 : accepté NEWYEAR2025-10 8 : préfixe trop long
+2NEWYEAR-10 2 : commence par un chiffre NewYear-10 10 : minuscules
+-10 3 : préfixe absent NEWYEAR10 12 : tiret absent
+NEW#YEAR-10 5 : caractère spécial NEWYEAR_10 13 : autre séparateur
+N-10 7 : préfixe trop court NEWYEAR-5 15 : un seul chiffre
+NEWYEAR-1O (lettre O) 17 : remise non numérique NEWYEAR-100 16 : trois chiffres
+1 cas valide et 11 cas invalides : 12 cas de test couvrent les 17 partitions (100 %). Chaque code invalide doit être refusé avec un 
+message clair
+19
+=== PAGE 20 ===
+Analyse des valeurs limites
+20
+=== PAGE 21 ===
+Analyse des valeurs limites : principe
+Constat
+◦ Les erreurs de programmation se concentrent aux frontières : « < » écrit au lieu de « ≤ », boucle qui commence 
+un indice trop loin (fonction numZero du chapitre 7)
+Définition
+◦ Tester les valeurs situées exactement aux frontières des partitions, et juste à côté
+◦ S'applique aux partitions ordonnées : nombres, dates, durées, longueurs, tailles
+◦ Complète les partitions d'équivalence : on choisit d'abord les partitions, puis on teste leurs frontières
+Une ou plusieurs variables
+◦ On étudie une variable à la fois, ou des limites issues d'une relation entre variables (ex : la date de livraison doit 
+être postérieure à la date de commande)
+21
+=== PAGE 22 ===
+Analyse des valeurs limites : 2 valeurs et 3 valeurs
+◦ L'ISTQB (syllabus v4.0) distingue deux variantes. Exemple : une quantité doit être comprise entre 1 et 99 ; ses limites sont 1 et 99
+Variante Valeurs testées pour chaque limite Valeurs pour 1 à 99 Nombre
+À 2 valeurs La limite et sa voisine la plus proche, qui appartient à la partition adjacente 0, 1, 99, 100 4
+À 3 valeurs
+La limite et ses deux voisines :
+- en appliquant la définition à la partition valide)
+- en appliquant la définiton à toutes les partitions
+0, 1, 2, 98, 99, 100
+-1, 0, 1, 2, 98, 99, 100, 101
+6
+8
+Défaut que seule la variante à 3 valeurs détecte : « quantite == 99 » écrit au lieu de « quantite <= 99 ». Avec 99 et 100, le résultat 
+est juste ; 98 est refusé à tort
+22
+=== PAGE 23 ===
+Analyse des valeurs limites : exemple
+◦ Exemple : une quantité entière doit être comprise entre 1 et 99. Le schéma montre les trois partitions, puis les valeurs testées à 
+chaque frontière
+◦ Points pleins : analyse à 2 valeurs ; points vides : valeurs ajoutées par l'analyse à 3 valeurs
+Invalide : < 1
+représentant -3
+Valide : de 1 à 99
+représentant 50
+Invalide : > 99
+représentant 150
+0 1 99 100
+Analyse à 2 valeurs : 0, 1, 99, 100
+2 98
+Ajoutées par l'analyse à 3 valeurs sur la partition valide : 2, 98
+23
+-1 101
+Ajoutées par l'analyse à 3 valeurs par application de la définition 
+stricte: -1, 2, 98, 101
+=== PAGE 24 ===
+Analyse des valeurs limites : couverture et limites non numériques
+◦ Couverture des valeurs limites = valeurs limites exercées / valeurs limites identifiées
+◦ Les limites ne sont pas seulement numériques (R. Patton) : exemples de limites à tester dans « Liste de Courses »
+Type de limite Exemple dans « Liste de Courses »
+Vide / plein Une liste sans aucun produit ; une liste de 200 produits, le maximum autorisé
+Premier / dernier Supprimer le premier, puis le dernier produit de la liste
+Plus court / plus long Un nom de liste de 1 caractère, puis de 50 caractères
+Plus tôt / plus tard Réserver un créneau exactement 2 h avant, puis exactement 7 jours avant
+Premier / dernier d'un ensemble ordonné Créneaux de 8 h à 18 h : tester le premier (8 h) et le dernier (18 h)
+24
+=== PAGE 25 ===
+Activité 1 
+individuelle
+Objectif : appliquer les partitions d'équivalence et les valeurs limites
+Contexte : règle de commande de « Liste de Courses » :
+◦ Montant minimum d'une commande : 20 DT
+◦ Livraison gratuite à partir de 50 DT
+◦ Montant maximum : 500 DT ; les montants sont saisis au millime (3 
+décimales)
+Travail demandé :
+◦ 1. Identifier et numéroter les partitions valides et invalides
+◦ 2. Donner les valeurs limites à 2 valeurs
+◦ 3. Donner les valeurs limites à 3 valeurs
+◦ 4. Indiquer le nombre de cas de test et la couverture obtenue
+25
+=== PAGE 26 ===
+Activité 1 
+–
+ Exemple de réponse
+Exemple de réponse
+◦ Partitions : le montant est découpé en cinq partitions, dont trois invalides (tableau ci-dessous)
+◦ Valeurs limites à 2 valeurs : 19,999 ; 20,000 ; 49,999 ; 50,000 ; 500,000 ; 500,001 DT => 6 cas
+◦ Valeurs limites à 3 valeurs : 19,998 ; 19,999 ; 20,000 ; 20,001 ; 49,998 ; 49,999 ; 50,000 ; 50,001 ; 499,999 ; 500,000 ; 500,001 ; 
+500,002 DT => 12 cas
+Partition Plage de montants Résultat attendu
+P1 (invalide) < 20,000 DT Commande refusée : minimum non atteint
+P2 (valide) de 20,000 à 49,999 DT Commande acceptée, livraison payante
+P3 (valide) de 50,000 à 500,000 DT Commande acceptée, livraison gratuite
+P4 (invalide) > 500,000 DT Commande refusée : maximum dépassé
+P5 (invalide) montant non numérique Saisie refusée
+Couverture de 100 % des 5 partitions (par exemple 10, 35, 200, 600 DT et « abc ») et des 6 ou 12 valeurs limites
+26
+=== PAGE 27 ===
+Tables de décision et graphes cause
+-
+effet
+27
+=== PAGE 28 ===
+Tables de décision : principe
+Quand l'utiliser
+◦ Quand une règle métier combine plusieurs conditions : si ... et ... alors ...
+Construction
+◦ Lignes : d'abord les conditions, puis les actions. Colonnes : les règles ; chaque règle est une combinaison de 
+conditions avec les actions attendues
+◦ Notation : V (vrai) ou F (faux) pour une condition ; X pour une action exécutée ; « – » pour une condition sans 
+importance ; N/A pour une combinaison impossible
+◦ Table complète : 2n colonnes pour n conditions vrai / faux ; on la simplifie ensuite
+Couverture (ISTQB)
+◦ Colonnes exercées / colonnes réalisables ; en pratique, un cas de test par colonne
+28
+=== PAGE 29 ===
+Tables de décision : exemple
+◦ Règle de remise de « Liste de Courses » : remise de 10 % pour un adhérent dont la commande atteint 50 DT ; sinon, remise de 5 % 
+avec un code promo valide ; livraison offerte dès 50 DT
+◦ Chaque colonne R1 à R8 est une règle, donc un cas de test ; V = vrai, F = faux, X = action exécutée
+R1 R2 R3 R4 R5 R6 R7 R8
+Adhérent V V V V F F F F
+Montant ≥ 50 DT V V F F V V F F
+Code promo valide V F V F V F V F
+Remise de 10 % X X
+Remise de 5 % X X X
+Livraison offerte X X X X
+Table complète : 3 conditions => 23 = 8 règles
+29
+=== PAGE 30 ===
+Tables de décision : simplification
+◦ Deux règles qui ne diffèrent que par une seule condition, et qui déclenchent les mêmes actions, fusionnent : cette condition devient 
+« – » (sans importance)
+◦ Exemple : R1 et R2 ne diffèrent que par le code promo ; un adhérent qui dépense 50 DT obtient 10 % dans les deux cas
+R1+R2 R3+R7 R4+R8 R5 R6
+Adhérent V – – F F
+Montant ≥ 50 DT V F F V V
+Code promo valide – V F V F
+Remise de 10 % X
+Remise de 5 % X X
+Livraison offerte X X X
+8 règles => 5 : 5 cas de test couvrent 100 % des colonnes réalisables
+30
+=== PAGE 31 ===
+Graphes cause
+-
+effet : notation
+◦ Un graphe cause-effet représente les relations logiques entre les causes (conditions d'entrée) et les effets (résultats). Technique de W. 
+R. Elmendorf (IBM), popularisée par G. J. Myers (1979)
+◦ Procédure : identifier les causes et les effets => dessiner le graphe => le transformer en table de décision => écrire un cas de test par 
+colonne
+Symbole Signification
+Identité  (a — b) Si a est vrai, b est vrai ; sinon b est faux
+NON  (a ~ b) Si a est vrai, b est faux ; sinon b est vrai
+OU  (∨) L'effet est vrai si au moins une des causes reliées est vraie
+ET  (∧) L'effet est vrai si toutes les causes reliées sont vraies
+Contrainte E (exclusive) Au plus une des causes reliées peut être vraie
+31
+=== PAGE 32 ===
+Graphes cause
+-
+effet : exemple
+◦ Spécification : « Liste de Courses » importe une liste depuis un fichier ; chaque ligne commence par un code de 2 caractères
+◦ Si le 1er caractère est « A » (ajout) ou « S » (suppression), et le 2e un chiffre (la quantité), la ligne est traitée
+◦ Si le 1er caractère est erroné : message « action inconnue » ; si le 2e n'est pas un chiffre : message « quantité invalide »
+C1
+C2
+C3
+E C1 : 1er caractère = « A » C2 : 1er caractère = « S »
+C3 : 2e caractère = chiffre
+I : C1 ou C2 (nœud intermédiaire)
+E1 : la ligne est traitée
+E2 : message « action inconnue »
+E3 : message « quantité invalide »
+E : C1 et C2 jamais vraies ensemble
+I∨
+E1∧
+E2
+NON
+E3
+NON
+32
+=== PAGE 33 ===
+Graphes cause
+-
+effet : du graphe aux cas de test
+◦ On part de chaque effet et on remonte vers les causes qui le produisent. C1 et C2 ne sont jamais vraies ensemble (contrainte E). 1 = 
+vrai, 0 = faux ; TC = cas de test
+TC1 TC2 TC3 TC4 TC5 TC6
+C1 : 1er caractère « A » 1 0 0 0 0 1
+C2 : 1er caractère « S » 0 1 0 0 1 0
+C3 : 2e caractère chiffre 1 1 0 1 0 0
+E1 : ligne traitée 1 1 0 0 0 0
+E2 : action inconnue 0 0 1 1 0 0
+E3 : quantité invalide 0 0 1 0 1 1
+Ligne de test A3 S2 X? X5 SZ A#
+6 cas de test. Exemple : la ligne « X5 » doit produire le seul message « action inconnue »
+33
+=== PAGE 34 ===
+Activité 2 en 
+groupe
+Objectif : construire et simplifier une table de décision
+Contexte : frais de livraison de « Liste de Courses » :
+◦ Abonné Premium : livraison gratuite partout
+◦ Non abonné, livré dans le Grand Tunis, commande ≥ 50 DT : livraison gratuite
+◦ Non abonné, livré dans le Grand Tunis, commande < 50 DT : 4,900 DT
+◦ Non abonné, livré hors du Grand Tunis : 12,000 DT, quel que soit le montant
+Travail demandé :
+◦ 1. Construire la table de décision complète
+◦ 2. La simplifier
+◦ 3. Écrire un cas de test par colonne, avec ses données
+◦ 4. Calculer la couverture obtenue
+34
+=== PAGE 35 ===
+Activité 2 
+-
+ Exemple de réponse
+Exemple de réponse : la table simplifiée
+◦ La table complète compte 8 règles (3 conditions). Un abonné Premium ne paie jamais : les 4 règles Premium fusionnent en R1. Hors du 
+Grand Tunis, le montant est sans importance : 2 règles fusionnent en R4
+R1 R2 R3 R4
+Abonné Premium V F F F
+Livré dans le Grand Tunis – V V F
+Commande ≥ 50 DT – V F –
+Frais de livraison 0 DT 0 DT 4,900 DT 12,000 DT
+Données de test Premium, Sfax, 20 DT Tunis, 60 DT Ariana, 30 DT Sousse, 80 DT
+4 cas de test couvrent 100 % des colonnes. Les valeurs limites du seuil de 50 DT (49,999 et 50,000) s'ajoutent
+35
+=== PAGE 36 ===
+Test de transition d'états
+36
+=== PAGE 37 ===
+Test de transition d'états : principe
+Quand l'utiliser
+◦ Quand le comportement dépend de ce qui s'est passé avant : systèmes à état (chapitre 7)
+Vocabulaire
+◦ État : situation stable du système. Événement : ce qui déclenche un changement
+◦ Transition : passage d'un état à un autre. Garde : condition qui autorise la transition. Action : ce que fait le 
+système pendant la transition
+Deux représentations
+◦ Diagramme d'états : vue d'ensemble des transitions valides
+◦ Table d'états : une case par couple (état, événement) ; les transitions invalides deviennent visibles
+C'est une forme de test basé sur les modèles : les tests se déduisent d'un modèle du logiciel
+37
+=== PAGE 38 ===
+Test de transition d'états : diagramme
+◦ Exemple : le cycle de vie d'une commande de « Liste de Courses » v2.0, avec 5 états et 4 événements (payer, préparer, livrer,
+annuler)
+◦ Rectangles : états ; flèches : transitions, étiquetées par l'événement et, entre crochets, par la garde ; point noir : état initial
+Créée
+payer
+[paiement 
+accepté]
+Payée
+préparer
+En préparation
+livrer
+Livrée
+Annulée
+annuler annuler
+/ rembourser
+Si le paiement est refusé, la commande reste dans l'état 
+Créée.
+Livrée et Annulée sont des états finaux.
+38
+=== PAGE 39 ===
+Test de transition d'états : table d'états
+◦ La table d'états de la commande croise chaque état avec chaque événement. Chaque case donne l'état d'arrivée
+◦ « — » : transition invalide. Le système doit refuser l'événement sans changer d'état
+État \ Événement payer préparer livrer annuler
+Créée Payée [accepté] Créée [refusé] — — Annulée
+Payée — En préparation — Annulée (remboursement)
+En préparation — — Livrée —
+Livrée — — — —
+Annulée — — — —
+6 transitions valides ; 15 couples (état, événement) invalides à tester pour la couverture complète
+39
+=== PAGE 40 ===
+Test de transition d'états : couverture
+◦ L'ISTQB définit trois niveaux de couverture, du plus faible au plus fort. Le dernier est le minimum recommandé pour les logiciels 
+critiques
+Critère de couverture Ce qu'il exige Cas de test pour la commande
+Tous les états Chaque état est visité au moins une fois 2 cas : Créée → Payée → En préparation → Livrée ; Créée → Annulée
+Transitions valides (« 0-switch » : 
+chaque transition prise isolément)
+Chaque transition valide est exécutée 
+au moins une fois
+3 cas : le parcours nominal ; paiement refusé puis 
+annulation ; paiement accepté puis annulation
+Toutes les transitions Les transitions valides, et chaque transition invalide tentée Les 3 cas + 15 tentatives, par exemple livrer une commande Créée ou annuler une commande Livrée
+40
+=== PAGE 41 ===
+Activité 3 
+individuelle
+Objectif : modéliser un comportement en états et en déduire les tests
+Contexte : invitation à partager une liste :
+◦ Une invitation envoyée peut être acceptée ou refusée par l'invité
+◦ Sans réponse sous 7 jours, elle expire
+◦ Le propriétaire peut révoquer une invitation envoyée ou acceptée
+◦ Toute autre action est refusée
+Travail demandé :
+◦ 1. Dessiner le diagramme d'états
+◦ 2. Construire la table d'états
+◦ 3. Écrire le minimum de cas couvrant toutes les transitions valides
+◦ 4. Ajouter deux cas de transitions invalides, avec leur résultat attendu
+41
+=== PAGE 42 ===
+Activité 3 
+-
+ Exemple de réponse (1/2)
+Exemple de réponse : la table d'états de l'invitation
+◦ Seule une invitation Envoyée ou Acceptée peut encore changer d'état ; les trois autres états sont finaux
+État \ Événement accepter refuser 7 jours écoulés révoquer
+Envoyée Acceptée Refusée Expirée Révoquée
+Acceptée — — — Révoquée
+Refusée — — — —
+Expirée — — — —
+Révoquée — — — —
+5 transitions valides ; 15 couples (état, événement) invalides
+42
+=== PAGE 43 ===
+Activité 3 
+-
+ Exemple de réponse (2/2)
+Exemple de réponse : les cas de test de l'invitation
+Cas Séquence d'événements Résultat attendu
+TC1 envoyer → accepter → révoquer Révoquée ; l'invité ne voit plus la liste
+TC2 envoyer → refuser Refusée
+TC3 envoyer → 7 jours sans réponse Expirée
+TC4 envoyer → révoquer Révoquée
+TC5 (invalide) accepter une invitation Expirée Refus ; l'état reste Expirée
+TC6 (invalide) accepter une invitation Révoquée Refus ; l'invité n'accède pas à la liste. C'est le défaut DEF- 88 du chapitre 7
+Les 4 premiers cas couvrent les 5 transitions valides : couverture des transitions valides = 100 %
+43
+=== PAGE 44 ===
+Techniques basées sur l'expérience
+44
+=== PAGE 45 ===
+Estimation d'erreur
+Principe
+◦ Anticiper les erreurs des développeurs à partir de l'expérience : défauts déjà rencontrés, erreurs typiques, 
+défaillances d'applications similaires
+Modèle d'erreurs
+◦ Chaque testeur tient à jour la liste des situations qui provoquent souvent des défauts, et conçoit un test par 
+situation
+◦ L'attaque de fautes est la version structurée de cette démarche (ISTQB)
+Avantages et limites
+◦ Rapide ; trouve ce que les techniques formelles oublient
+◦ Dépend de l'expérience du testeur ; ne s'utilise jamais seule
+◦ Exemple : pour tester le tri d'une liste par rayon : liste vide, un seul produit, liste déjà triée, triée à l'envers, tous les 
+produits dans le même rayon, 500 produits
+45
+=== PAGE 46 ===
+Estimation d'erreur : un modèle d'erreurs
+◦ Exemple de modèle d'erreurs pour « Liste de Courses » : chaque situation propice aux défauts donne au moins un cas de test
+Situation propice aux défauts Cas de test dans « Liste de Courses »
+Valeur vide ou absente Ajouter un produit sans nom
+Valeur très grande ou très petite Quantité 99 999 ; prix 0,000 DT
+Chaîne très longue, caractères spéciaux Nom de 500 caractères, émoji, apostrophe
+Doublon Ajouter deux fois le même produit
+Action répétée Double clic sur le bouton « Payer »
+Interruption Coupure réseau pendant la synchronisation
+Date et heure 29 février ; changement de jour à minuit pendant une réservation
+Accès simultanés Deux téléphones modifient la même liste en même temps
+46
+=== PAGE 47 ===
+Test exploratoire
+Définition
+◦ Conception, exécution et apprentissage se font en même temps : le résultat d'un test oriente le test suivant
+Test exploratoire par sessions
+◦ Une charte : la mission de la session, en une phrase
+◦ Une durée fixe, souvent de 60 à 90 minutes
+◦ Des notes prises pendant la session, puis un débriefing qui décide des sessions suivantes
+Quand l'utiliser
+◦ Spécification pauvre ou absente ; délai court ; en complément des techniques formelles
+Le test exploratoire n'est pas du test au hasard : il est cadré par une charte et il laisse une trace écrite
+47
+=== PAGE 48 ===
+Test exploratoire : charte et compte rendu
+◦ Exemple de charte et de compte rendu d'une session exploratoire sur « Liste de Courses »
+Élément Exemple
+Charte Explorer la synchronisation d'une liste partagée, avec coupure réseau, pour découvrir des pertes ou des doublons de produits
+Durée 60 minutes
+Zones explorées Ajouts hors ligne sur deux téléphones ; suppression pendant la reconnexion
+Défaut trouvé DEF-102 : un produit supprimé réapparaît après la reconnexion
+Question ouverte Quelle modification l'emporte quand deux téléphones sont en conflit ?
+Décision du débriefing Nouvelle session : conflits de quantité entre deux téléphones
+48
+=== PAGE 49 ===
+Test basé sur des checklists
+Principe
+◦ Une liste de points à vérifier, issue de l'expérience, des standards et des défauts passés
+◦ Chaque point est formulé comme une question à laquelle on répond par oui ou non
+Entretien
+◦ La checklist évolue : un point qui ne trouve plus aucun défaut est revu ou retiré (les tests s'usent)
+◦ Chaque défaut découvert en production peut lui ajouter un point
+◦ Exemple : checklist pour chaque nouvel écran : les libellés sont-ils en français ? les messages d'erreur sont-ils explicites ? 
+peut-on tout faire au clavier ? le contraste est-il suffisant ? que se passe-t-il hors ligne ?
+49
+=== PAGE 50 ===
+Approche collaborative et choix des techniques
+50
+=== PAGE 51 ===
+Approche collaborative : critères d'acceptation
+User story : les 3 C
+◦ Carte : « En tant que..., je veux..., afin de... » ; Conversation entre métier, développeurs et testeurs ; Confirmation par les 
+critères d'acceptation
+◦ Qualités attendues (INVEST) : indépendante, négociable, utile, estimable, petite, testable
+Critères d'acceptation : deux formats
+◦ Orienté scénario : Étant donné (le contexte) / Quand (l'action) / Alors (le résultat)
+◦ Orienté règle : une liste de règles vérifiables
+◦ Exemple : étant donné une liste partagée avec 5 personnes, quand j'invite une 6e personne, alors un message indique la 
+limite et aucun partage n'est créé
+51
+=== PAGE 52 ===
+Choisir et combiner les techniques
+◦ Pour chaque situation rencontrée dans une spécification, la technique la mieux adaptée
+Situation Technique adaptée
+Champ numérique, plage de dates ou de durées Partitions d'équivalence et valeurs limites
+Entrée définie par un format ou une grammaire Test syntaxique
+Règles métier qui combinent des conditions Table de décision ; graphe cause-effet si la logique est complexe
+Comportement qui dépend de l'historique Transition d'états
+Nombreux paramètres combinés Couverture « chaque choix », puis test par paires
+Spécification pauvre, délai court Test exploratoire, estimation d'erreur
+Vérifications qui reviennent à chaque version Checklist
+Les techniques se combinent : la table de décision fixe les règles, les valeurs limites testent ses seuils
+52
+=== PAGE 53 ===
+Concevoir des tests avec une IA générative
+Ce qu'un assistant IA fait bien
+◦ Proposer rapidement de nombreux cas de test ; rappeler des situations oubliées
+Ce qu'il fait souvent mal
+◦ Oublier des partitions invalides et des valeurs limites exactes
+◦ Inventer des résultats attendus qui ne sont pas dans la spécification (oracle non vérifié)
+◦ Produire des doublons ; ignorer les règles métier qui ne sont pas écrites
+Bonne pratique
+◦ Concevoir d'abord soi-même, puis comparer ; vérifier chaque résultat attendu ; mesurer la couverture des deux 
+suites
+ l'IA propose, le testeur décide
+53
+=== PAGE 54 ===
+Conception des tests : récapitulatif
+◦ Partitions d'équivalence : un représentant par partition, valide ou invalide ; une seule partition invalide par 
+cas
+◦ Valeurs limites : la limite et sa voisine (2 valeurs) ou ses deux voisines (3 valeurs)
+◦ Tables de décision : une colonne par règle, simplifiée ; le graphe cause-effet aide à la construire
+◦ Transitions d'états : tous les états, transitions valides, toutes les transitions
+◦ Expérience : estimation d'erreur, test exploratoire par sessions, checklists
+◦ Approche collaborative : critères d'acceptation testables, écrits ensemble
+54

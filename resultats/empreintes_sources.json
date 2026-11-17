@@ -1,0 +1,46 @@
+﻿[
+    {
+        "fichier":  "panier.py",
+        "sha256":  "B7EC1C33B2C08181F43520A108B1BF3E8587FEB01C5B6B4C988D62D857AB092F"
+    },
+    {
+        "fichier":  "verifier_mutants.py",
+        "sha256":  "CFF1FD681EA5554650D5E5F9C9BF43B0BC7A16580B3401D3165F5AB990A41633"
+    },
+    {
+        "fichier":  "mutants/mutant_1.py",
+        "sha256":  "0036DE0A8300AF80650F9FA4CB22A0957D799C2148878FFAFCB7B50539963A2B"
+    },
+    {
+        "fichier":  "mutants/mutant_2.py",
+        "sha256":  "035F80337540379B663DC1F4335F474FCEFA8EE1E384CF403AA67A4BE506E564"
+    },
+    {
+        "fichier":  "mutants/mutant_3.py",
+        "sha256":  "36E471861C0730B190953242EF089A7448E3F692EBB6BB3E1106DB456010D190"
+    },
+    {
+        "fichier":  "mutants/mutant_4.py",
+        "sha256":  "B2E261E620388EE1090C7B0C0452BEB81F89EDAD4A97ED92E79AB148ED488912"
+    },
+    {
+        "fichier":  "mutants/mutant_5.py",
+        "sha256":  "9D7D49F2ABB25C93B78BD01C3739CC41F234412D350CA74AFC31414168FF845A"
+    },
+    {
+        "fichier":  "mutants/mutant_6.py",
+        "sha256":  "2ACF40503D6EF7349619CCD28346D3309ED3CA7686CA0620079B7E9F8A915F9B"
+    },
+    {
+        "fichier":  "mutants/mutant_7.py",
+        "sha256":  "9D3A57899B148E70489D3731A2FC7AFACC175125FD0991A64D398279FFE46C79"
+    },
+    {
+        "fichier":  "mutants/mutant_8.py",
+        "sha256":  "04FEF9AB6949C213D811D025B7E8CDC8E9C8C7853984B76B4590D1CEAED2331B"
+    },
+    {
+        "fichier":  "mutants/MUTANTS.md",
+        "sha256":  "0FA08C4B6D07F4FB95F90479573836449286FD4AA45551D61E9C9D6047019077"
+    }
+]

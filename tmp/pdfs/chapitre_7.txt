@@ -1,0 +1,698 @@
+=== PAGE 1 ===
+Fondements et Stratégie du Test Logiciel
+Chapitre 7
+Cours Qualité et Test Logiciels 
+–
+ II3
+-
+GL
+Dr-Ing. Sihem Ben Sassi
+
+=== PAGE 2 ===
+Plan
+◦ Introduction : pourquoi tester ?
+◦ Concepts fondamentaux du test
+◦ Les sept principes du test
+◦ Le processus de test
+◦ Niveaux et types de test
+◦ Stratégie de test basée sur les risques
+2
+
+=== PAGE 3 ===
+Objectifs du chapitre
+Après avoir terminé ce chapitre, vous serez en mesure de :
+◦ Définir le test logiciel et ses objectifs
+◦ Différencier test et débogage, vérification et validation
+◦ Utiliser le vocabulaire du test : base de test, condition, cas de test, oracle
+◦ Rédiger un cas de test complet et reproductible
+◦ Expliquer les sept principes du test et les reconnaître dans une situation réelle
+◦ Décrire les activités du processus de test et leurs livrables
+◦ Classer un test selon son niveau et son type
+◦ Construire une stratégie de test basée sur les risques
+3
+
+=== PAGE 4 ===
+Introduction : pourquoi tester ?
+4
+
+=== PAGE 5 ===
+Introduction : pourquoi tester ?
+Rappel
+◦ Vérification statique (vue chapitre 5) a pour but d’examiner un artefact sans l'exécuter
+◦ Vérification dynamique a pour but d’exécuter le logiciel et observer son comportement => le test
+Exemple : Ariane 5, vol 501 (4 juin 1996)
+◦ Le logiciel de la centrale inertielle d'Ariane 4 est réutilisé sur Ariane 5
+◦ Une valeur liée à la vitesse horizontale, plus grande sur Ariane 5, déborde lors de sa conversion d'un flottant 64 
+bits en entier 16 bits
+◦ Exception non traitée => perte du guidage => destruction du lanceur environ 40 secondes après le décollage
+◦ Le logiciel n'avait pas été testé avec la trajectoire réelle d'Ariane 5
+Conclusion : un défaut qui n'est jamais exécuté reste invisible ; le test l'exécute avant l'utilisateur
+5
+
+=== PAGE 6 ===
+Introduction : objectifs du test
+Le test poursuit plusieurs objectifs, qui varient selon le contexte (ISTQB)
+Objectif Exemple pour « Liste de Courses »
+Évaluer les produits d'activité : exigences, user stories, conception, 
+code Relire la user story « partager une liste » avant son développement
+Provoquer des défaillances et trouver des défauts Ajouter 1 000 produits à une liste pour voir si l'application tient
+Assurer la couverture requise de l'objet de test Chaque exigence a au moins un cas de test
+Réduire le niveau de risque d'une qualité insuffisante Tester en priorité le paiement et la synchronisation
+Vérifier que les exigences spécifiées sont satisfaites Le total affiché respecte les règles de promotion de la spécification
+Vérifier la conformité aux obligations légales ou contractuelles Les données personnelles sont supprimées sur demande (RGPD)
+Fournir de l'information aux parties prenantes pour décider « 3 défauts critiques ouverts : livraison déconseillée »
+Valider que le logiciel répond aux attentes et renforcer la confiance Des clients pilotes font leurs vraies courses avec l'application
+Constituer un historique des défauts pour la prévention (actions 
+correctives et préventives)
+40 % des défauts viennent de user stories ambiguës => revue 
+systématique des user stories
+6
+International Software Testing Qualifications Board
+
+=== PAGE 7 ===
+Introduction : test et débogage
+Test
+◦ Met en évidence des défaillances (test dynamique) ou trouve directement des défauts (test statique)
+Débogage
+◦ Activité de développement qui trouve, analyse et supprime la cause d'une défaillance
+◦ Étapes : reproduction de la défaillance => diagnostic (trouver le défaut) => correction
+Après la correction
+◦ Test de confirmation : le défaut est-il bien corrigé ?
+◦ Test de régression : la correction a-t-elle cassé autre chose ?
+◦ Exemple : le testeur constate un total de 12,49 DT au lieu de 12,50 DT (test) ; le développeur reproduit, trouve un 
+arrondi par troncature et le corrige (débogage) ; le testeur réexécute le cas (confirmation) puis tous les tests du calcul du
+total (régression)
+Le testeur montre que ça ne marche pas ; le développeur trouve pourquoi
+7
+
+=== PAGE 8 ===
+Introduction : vérification et validation
+Le test contribue aux deux ; il fait partie du contrôle qualité
+Caractérisation Vérification Validation
+Question « Construisons-nous le produit correctement ? » « Construisons-nous le bon produit ? »
+Référence La spécification Les besoins et attentes réels des utilisateurs
+Moyens Revues, analyse statique, tests sur la spécification Tests d'acceptation, tests avec les utilisateurs, démonstrations
+Exemple « Liste de Courses » Le partage est limité à 5 personnes, comme spécifié Les familles ont en réalité besoin de partager avec 8 personnes
+Un logiciel peut être parfaitement vérifié et pourtant inutile
+8
+
+=== PAGE 9 ===
+Concepts fondamentaux du test
+9
+
+=== PAGE 10 ===
+Concepts fondamentaux du test (1/8)
+Rappel : de l'erreur à la défaillance
+◦ Erreur : action humaine qui produit un résultat incorrect
+◦ Défaut : imperfection dans un produit d'activité (spécification, code...), issue d'une erreur
+◦ Défaillance : écart entre le comportement observé et le comportement attendu, quand un défaut est 
+exécuté
+◦ Cause racine : raison fondamentale de l'erreur (formation, spécification ambiguë, pression des délais...)
+◦ Une défaillance peut aussi venir de l'environnement (rayonnement, champ électromagnétique)
+◦ Exemple : la spécification ne précise pas l'arrondi (cause racine) => le développeur suppose une troncature 
+(erreur) => calculer_total() tronque (défaut) => l'utilisateur voit 12,490 DT au lieu de 12,500 DT 
+(défaillance)
+Le test révèle les défaillances ; l'analyse des causes racines (chapitre 4) évite qu'elles se reproduisent
+10
+
+=== PAGE 11 ===
+Concepts fondamentaux du test (2/8)
+Exemple : un défaut ne produit pas toujours une défaillance
+◦ Questions : 1. Où est le défaut ?  
+2. Quel résultat pour [2, 7, 0] ?  
+3. Quel résultat pour [0, 7, 2] ?
+Version Java Version Python
+1 public static int numZero(int[] x) {
+ 2   // Effet : exception si x est null,
+ 3   // sinon renvoie le nombre de 0 dans x
+ 4   int count = 0;
+ 5   for (int i = 1; i < x.length; i++) {
+ 6     if (x[i] == 0) {
+ 7       count++;
+ 8     }
+ 9   }
+10   return count;
+11 }
+1 def num_zero(x):
+ 2     # Effet : TypeError si x vaut None,
+ 3     # sinon renvoie le nombre de 0 dans x
+ 4     count = 0
+ 5     for i in range(1, len(x)):
+ 6         if x[i] == 0:
+ 7             count += 1
+ 8     return count
+11
+
+=== PAGE 12 ===
+Concepts fondamentaux du test (3/8)
+Réponses (exemple d'après Ammann et Offutt)
+◦ Défaut : la boucle commence à l'indice 1 (ligne 5) alors que les tableaux commencent à 0 => le premier élément n'est 
+jamais examiné
+Entrée Résultat obtenu Résultat attendu Défaut exécuté ? Défaillance ?
+[2, 7, 0] 1 1 Oui Non
+[0, 7, 2] 0 1 Oui Oui
+[ ] (tableau vide) 0 0 Oui Non
+Une défaillance n'apparaît que si le défaut est exécuté avec une entrée qui le révèle : ici, un 0 en première position => le choix des 
+données de test est décisif 
+12
+
+=== PAGE 13 ===
+Concepts fondamentaux du test (4/8)
+Quand y a-t-il défaut ? Les cinq règles du testeur (Ron Patton)
+Il y a défaut quand le logiciel... Exemple « Liste de Courses »
+1. Ne fait pas ce que la spécification dit qu'il doit faire Le partage avec une 5e personne est refusé
+2. Fait ce que la spécification dit qu'il ne doit pas faire Un invité dont le partage est révoqué voit encore la liste
+3. Fait ce que la spécification ne mentionne pas Les listes vides sont supprimées sans prévenir
+4. Ne fait pas ce que la spécification ne mentionne pas, mais devrait 
+faire Aucune confirmation avant de supprimer une liste
+5. Est difficile à comprendre, à utiliser, lent, ou simplement « pas 
+bien » par rapport à l'utilisateur Ajouter un produit demande 6 étapes
+Les règles 3 à 5 dépassent la spécification : le testeur se met aussi à la place de l'utilisateur (validation)
+13
+
+=== PAGE 14 ===
+Concepts fondamentaux du test (5/8)
+Vocabulaire du test
+Terme Définition Exemple « Liste de Courses »
+Objet de test (test object) Ce qui est testé Le module de partage de listes
+Base de test (test basis) Ce dont on déduit les tests : exigences, user stories, conception User story US-12 « partager une liste »
+Condition de test Aspect testable de la base de test « Partage refusé au-delà de 5 personnes »
+Cas de test (test case) Préconditions, entrées, résultat attendu, postconditions Partager avec une 6e personne => message d'erreur
+Procédure de test Suite ordonnée d'actions et de cas de test à exécuter Créer une liste, la partager 5 fois, tenter un 6e partage
+Données de test Données nécessaires à l'exécution Comptes de test, 6 adresses e-mail valides
+Environnement de test Matériel, logiciel et outils pour exécuter les tests Smartphone Android, API et base de recette
+Testware Tous les produits du test : plans, cas, scripts, rapports... Le dossier de test de la version 2.0
+14
+
+=== PAGE 15 ===
+Concepts fondamentaux du test (6/8)
+Anatomie d'un cas de test
+◦ Un cas de test est reproductible : deux testeurs qui l'exécutent obtiennent le même verdict
+Élément Exemple : TC-031
+Titre Refuser un partage au-delà de 5 personnes
+Traçabilité US-12, critère d'acceptation n° 2
+Priorité Haute
+Préconditions Utilisateur connecté ; liste « Courses semaine » déjà partagée avec 5 personnes
+Étapes 1. Ouvrir la liste  2. Choisir « Partager »  3. Saisir sixieme@exemple.com  4. Valider
+Résultat attendu Message « Une liste peut être partagée avec 5 personnes au maximum » ; aucun partage créé
+Postconditions La liste reste partagée avec les 5 mêmes personnes
+15
+
+=== PAGE 16 ===
+Concepts fondamentaux du test (7/8)
+Cas de test et état du système
+◦ Forme élémentaire d'un cas de test : le couple <entrée, résultat attendu>
+◦ Système sans état : le résultat ne dépend que de l'entrée courante (ex : un compilateur, une fonction de calcul)
+◦ Système à état : le résultat dépend de l'entrée et de l'état courant => le cas de test est une séquence de couples
+◦ Le résultat observé comprend la valeur produite et le changement d'état
+◦ Exemple : liste vide, total EX-07 : <ajouter « Lait » à 1,20 DT, total = 0,00 DT (non coché)> ; <cocher « Lait », total = 1,20 
+DT> ; <décocher « Lait », total = 0,00 DT>
+◦ Exemple : distributeur de billets : <consulter, 500 DT> ; <retirer, « montant ? »> ; <200 DT, billets délivrés> ; <consulter, 
+300 DT>
+La même entrée « cocher » donne des totaux différents selon l'état de la liste
+16
+
+=== PAGE 17 ===
+Concepts fondamentaux du test (8/8)
+L'oracle de test (test oracle)
+◦ Source qui permet de déterminer le résultat attendu, donc le verdict : réussi ou échoué
+Sources d'oracle
+◦ Spécification, user story et critères d'acceptation
+◦ Version précédente ou système équivalent : même entrée => même sortie
+◦ Calcul indépendant (tableur, formule) ; expert métier
+Le problème de l'oracle
+◦ Le résultat exact est parfois inconnu ou trop coûteux à calculer => on vérifie des propriétés (oracle partiel)
+◦ Exemple : recherche dans un catalogue de 50 000 produits : on ne connaît pas la liste exacte attendue, mais chaque 
+résultat doit contenir le mot cherché et aucun produit retiré ne doit apparaître
+Sans oracle, un test exécute le code mais ne vérifie rien
+17
+
+=== PAGE 18 ===
+Activité 1 
+individuelle
+Objectif : rédiger un cas de test complet
+Contexte : application « Liste de Courses », exigence EX-07 :
+◦ « Le total d'une liste est la somme des prix des produits cochés. La 
+promotion « 2 achetés, le 3e offert » s'applique par produit. Le total est 
+arrondi au centime le plus proche. »
+Travail demandé :
+◦ 1. Identifier 3 conditions de test à partir de EX-07
+◦ 2. Rédiger un cas de test complet pour l'une d'elles : identifiant, 
+préconditions, étapes, résultat attendu
+◦ 3. Indiquer l'oracle utilisé pour obtenir le résultat attendu
+Indication : penser aux produits non cochés et aux quantités qui ne sont pas 
+des multiples de 3
+18
+
+=== PAGE 19 ===
+Activité 1
+-
+ Exemple de Réponse
+Exemple de réponse
+◦ CT1 : seuls les produits cochés entrent dans le total
+◦ CT2 : la promotion offre 1 unité par groupe de 3 unités d'un même produit
+◦ CT3 : le total est arrondi au centime le plus proche
+Élément Cas de test TC-045 (condition CT2)
+Préconditions Liste vide ; produit « Yaourt » à 0,850 DT avec la promotion « 2 achetés, le 3e offert »
+Étapes 1. Ajouter 4 yaourts  2. Les cocher  3. Afficher le total
+Résultat attendu Total = 2,550 DT : 4 unités, dont 1 offerte, soit 3 × 0,850 DT
+Oracle Calcul indépendant à partir de la spécification EX-07
+19
+
+=== PAGE 20 ===
+Les sept principes du test
+20
+
+=== PAGE 21 ===
+Les sept principes du test (1/3)
+Principe Signification Exemple « Liste de Courses »
+1. Le test montre la présence de 
+défauts, pas leur absence
+Un test réussi ne prouve pas l'absence de défaut ; 
+il réduit la probabilité de défauts non découverts
+1 200 tests réussis n'empêchent pas un défaut de 
+synchronisation entre deux téléphones
+2. Le test exhaustif est impossible
+On ne peut pas tester toutes les combinaisons 
+d'entrées => on priorise (risques, techniques de 
+conception)
+Ajout d'un produit : 99 quantités × 5 unités × 20 
+catégories = 9 900 combinaisons, sans compter le 
+nom libre
+3. Tester tôt économise du temps et 
+de l'argent
+Un défaut trouvé tôt ne se propage pas aux 
+produits suivants
+L'ambiguïté sur l'arrondi relevée en revue de la 
+user story coûte 10 minutes
+4. Les défauts se regroupent Un petit nombre de composants concentre la plupart des défauts (Pareto) La synchronisation hors ligne concentre 7 des 10 derniers défauts => la tester davantage
+21
+
+=== PAGE 22 ===
+Les sept principes du test (2/3)
+Pourquoi le test exhaustif est impossible
+◦ Espace des entrées : une fonction f(int x, int y) en Java accepte 
+232 × 232≈ 1,8 × 1019 couples => à un milliard de tests par 
+seconde, près de 585 ans
+◦ Espace des états : le résultat dépend aussi de l'historique
+◦ Nombre de chemins d'exécution : une boucle de n tours 
+contenant un if offre 2n chemins
+◦ Subjectivité des spécifications : le résultat attendu lui-même est 
+parfois discutable
+Conséquence
+◦ On choisit un petit nombre de tests représentatifs, guidé par 
+les risques et les techniques de conception (chapitres suivants)
+Exemple: l'explosion du nombre de chemins
+// Java
+for (int i = 0; i < n; i++) {
+    if (a.age(i) == b.age(i)) {
+        // traitement 1
+    } else {
+        // traitement 2
+    }
+}
+ 
+# Python
+for i in range(n):
+    if a.age(i) == b.age(i):
+        ...  # traitement 1
+    else:
+        ...  # traitement 2
+n = 40 => 240≈ 1 100 milliards de chemins possibles, pour 
+neuf lignes de code.
+22
+
+=== PAGE 23 ===
+Les sept principes du test (3/3)
+Principe Signification Exemple « Liste de Courses »
+5. Les tests s'usent Répétés à l'identique, les tests ne trouvent plus de nouveaux défauts => les revoir, en ajouter La suite de régression ne trouve plus rien depuis 6 mois, alors que les utilisateurs signalent des défauts
+6. Le test dépend du contexte Pas d'approche universelle : la stratégie dépend du domaine, des risques, des contraintes L'application de courses n'est pas testée comme un logiciel de dosage médical
+7. L'illusion de l'absence de défauts Un logiciel sans défaut connu peut être inutilisable s'il ne répond pas aux besoins Zéro défaut à la livraison, mais les familles partagent leurs listes par messagerie, pas par e- mail
+Source : ISTQB, syllabus Foundation Level v4.0 (2023)
+23
+
+=== PAGE 24 ===
+Activité 2 en 
+groupe
+Objectif : reconnaître les sept principes dans des situations réelles
+Travail demandé : pour chaque situation, identifier le principe ignoré et 
+proposer une action
+◦ 1. « Tous nos tests passent : la version 2.0 ne contient aucun défaut. »
+◦ 2. Le chef de projet demande de tester toutes les combinaisons des 12 
+filtres de recherche, chacun à 5 valeurs
+◦ 3. Les testeurs rejoignent le projet une semaine avant la livraison
+◦ 4. 28 des 40 derniers défauts viennent du paiement, mais l'effort de 
+test est réparti uniformément
+◦ 5. Depuis un an, les mêmes 300 tests de régression passent, alors que 
+les utilisateurs signalent des défauts
+◦ 6. L'équipe reprend tel quel le plan de test d'un logiciel bancaire
+◦ 7. L'application passe tous les tests, mais les utilisateurs la désinstallent 
+: ajouter un produit demande 6 étapes
+24
+
+=== PAGE 25 ===
+Activité 2 en groupe
+Exemple de réponse
+Situation Principe ignoré Action proposée
+1 1. Présence, pas absence Communiquer un niveau de risque résiduel, pas une absence de défauts
+2 2. Exhaustivité impossible 5 puissance 12 = 244 millions de combinaisons => techniques de conception et priorisation par les risques
+3 3. Tester tôt Intégrer les testeurs dès la rédaction des user stories et des critères d'acceptation
+4 4. Regroupement des défauts Concentrer l'effort de test sur le paiement
+5 5. Usure des tests Revoir la suite ; ajouter un test pour chaque défaut signalé par les utilisateurs
+6 6. Dépendance au contexte Construire la stratégie à partir des risques propres à l'application
+7 7. Illusion de l'absence de défauts Valider avec les utilisateurs : tests d'utilisabilité et d'acceptation
+25
+
+=== PAGE 26 ===
+Le processus de test
+26
+
+=== PAGE 27 ===
+Le processus de test (1/3)
+Le test n'est pas une phase en fin de projet, mais un ensemble d'activités (ISTQB)
+Activité Question Ce qu'elle produit (testware)
+1. Planification Pourquoi et comment tester ? Avec quels moyens ? Plan de test
+2. Pilotage et contrôle Où en est-on ? Faut-il corriger la trajectoire ? Rapports d'avancement, actions correctives
+3. Analyse Quoi tester ? Conditions de test priorisées ; défauts trouvés dans la base de test
+4. Conception Comment tester ? Cas de test, données de test, besoins en environnement
+5. Implémentation Tout est-il prêt pour exécuter ? Procédures, scripts automatisés, environnement opérationnel
+6. Exécution Les résultats sont-ils conformes ? Résultats, journaux, rapports de défauts
+7. Clôture Qu'a-t-on appris ? Rapport de clôture, leçons apprises, testware archivé
+Les activités se chevauchent et se répètent à chaque itération ; le pilotage et le contrôle s'exercent en continu
+27
+
+=== PAGE 28 ===
+Le processus de test (2/3)
+Exemple : le processus appliqué à la fonctionnalité « partage de liste »
+Activité Ce que fait l'équipe
+Planification Partage = risque élevé (données personnelles) => tests fonctionnels et de sécurité, 3 jours
+Analyse Lecture de US-12 : 6 conditions de test ; une ambiguïté relevée : que voit un invité dont le partage est révoqué ?
+Conception 14 cas de test, dont 4 aux limites (5 et 6 invités)
+Implémentation 10 cas automatisés sur l'API, 4 manuels ; comptes de test créés
+Exécution 13 réussis, 1 échoué => défaut DEF-88 : un invité révoqué voit encore la liste
+Pilotage et contrôle Défaut critique => exécution prolongée d'un jour pour le test de confirmation
+Clôture 14 cas sur 14 réussis après correction ; leçon : préciser la révocation dès la user story
+28
+
+=== PAGE 29 ===
+Le processus de test (3/3)
+Traçabilité
+◦ Lien maintenu entre base de test, cas de test, résultats et défauts
+◦ Bénéfices : mesurer la couverture des exigences ; savoir quels tests réexécuter après une modification ; rendre le test 
+auditable
+Exigence (US-12) Cas de test Dernier résultat Défaut
+CA1 : partager une liste TC-030, TC-032 Réussi —
+CA2 : limite de 5 personnes TC-031, TC-033 Réussi —
+CA3 : révoquer un partage TC-034 Échoué DEF-88
+CA4 : notifier l'invité — Non couvert —
+La matrice révèle aussitôt une exigence sans test (CA4) et une exigence en échec (CA3)
+29
+
+=== PAGE 30 ===
+Le processus de test : rôles et indépendance
+Deux rôles (ISTQB)
+◦ Rôle de gestion du test : planification, pilotage, contrôle, clôture
+◦ Rôle de test : analyse, conception, implémentation, exécution
+◦ Approche équipe entière : en agile, chacun peut tester ; le testeur apporte son expertise à toute l'équipe
+Niveaux d'indépendance
+◦ Auteur => collègue de l'équipe => testeurs d'une autre équipe => testeurs externes
+◦ Bénéfice : un regard différent trouve d'autres défauts (biais de l'auteur)
+◦ Limites : isolement, communication plus lente, développeurs moins responsabilisés
+◦ Exemple : le développeur teste ses fonctions, un collègue relit, l'équipe QA teste le système, un cabinet externe réalise le 
+test d'intrusion du paiement
+30
+
+=== PAGE 31 ===
+Le processus de test : compétences et psychologie
+Compétences du testeur
+◦ Curiosité, souci du détail, rigueur, esprit critique ; connaissance du métier et compétences techniques
+◦ Le test est un métier technique qui s'apprend (certification ISTQB)
+Psychologie du test
+◦ Le testeur est souvent porteur de mauvaises nouvelles : il n'est pas toujours le membre le plus populaire de 
+l'équipe
+◦ Biais de confirmation : chacun accepte mal une information qui contredit ses convictions => le développeur croit 
+son code correct
+Communiquer un défaut
+◦ Décrire des faits, pas des personnes ; rappeler l'objectif commun : un produit de qualité
+◦ Exemple : « Ton calcul est faux » => « Avec 4 yaourts en promotion, le total affiché est 3,40 DT au lieu de 2,55 DT (TC-
+045) »
+31
+
+=== PAGE 32 ===
+Niveaux et types de test
+32
+
+=== PAGE 33 ===
+Niveaux de test
+Rappel : la pyramide unitaire / intégration / bout en bout
+◦ L'ISTQB distingue cinq niveaux, chacun avec son objet et sa base de test
+Niveau Objet testé Base de test Exemple « Liste de Courses »
+Composant (unitaire) Une unité isolée : fonction, classe Conception détaillée, code calculer_total() applique la promotion
+Intégration de composants Les interfaces entre composants Architecture, interfaces Le module liste appelle correctement le service de prix
+Système Le système complet Spécifications, user stories Parcours complet : créer, partager, cocher, synchroniser
+Intégration de systèmes Les interfaces avec les systèmes externes Contrats d'interface, API Paiement via la passerelle bancaire
+Acceptation L'adéquation aux besoins Besoins métier, critères d'acceptation Des clients pilotes font leurs courses pendant une semaine
+33
+
+=== PAGE 34 ===
+Niveaux de test : les formes du test d'acceptation
+Forme Qui, où Objectif Exemple « Liste de Courses »
+Acceptation utilisateur Les utilisateurs prévus L'application convient-elle à l'usage réel ? Des familles gèrent leurs courses pendant une semaine
+Acceptation opérationnelle Exploitation, administrateurs Sauvegarde, restauration, installation, supervision Restaurer les listes après une panne du serveur
+Acceptation contractuelle et 
+réglementaire Client, autorité de contrôle Conformité au contrat ou à la loi RGPD : export et suppression des données personnelles
+Alpha Utilisateurs ou testeurs, sur le site du développeur Retour précoce, dans l'environnement de développement 20 employés utilisent la version 2.0 avant sa sortie
+Bêta Utilisateurs réels, dans leur propre environnement Retour sur une grande variété d'appareils et d'usages 1 000 volontaires via le programme de test du magasin d'applications
+34
+
+=== PAGE 35 ===
+Niveaux de test : le test dans le cycle de développement
+Modèle en V
+◦ À chaque activité de développement correspond un niveau de test, conçu dès que sa base de test existe
+Agile et DevOps
+◦ Tous les niveaux dans chaque itération ; shift-left : tester le plus tôt possible (TDD, BDD : chapitre 10)
+Activité de développement Niveau de test associé Tests conçus dès que...
+Recueil des besoins Acceptation Les critères d'acceptation sont écrits
+Spécification du système Système La spécification est relue
+Architecture Intégration Les interfaces sont définies
+Conception détaillée Composant La conception de l'unité est faite
+Exemple : les critères d'acceptation de US-12 sont écrits avec la user story, avant tout code
+35
+
+=== PAGE 36 ===
+Types de test
+Un type de test répond à un objectif ; chaque type s'applique à tous les niveaux
+Type Ce qu'il évalue Exemple « Liste de Courses »
+Fonctionnel Ce que fait le système Une liste partagée apparaît chez l'invité
+Non fonctionnel
+Comment il le fait : caractéristiques ISO/IEC 
+25010:2023 (performance, sécurité, capacité 
+d'interaction, fiabilité...)
+Synchronisation en moins de 2 s pour 500 
+utilisateurs
+Boîte noire Le comportement, à partir de la spécification, sans regarder le code Valeurs limites : 5 et 6 invités (chapitre 8)
+Boîte grise Les deux à la fois : tests conçus sur la spécification, avec la connaissance de la conception Après suppression d'une liste, vérifier en base qu'elle est marquée supprimée
+Boîte blanche La structure interne : instructions, branches Toutes les branches de fusionner_listes() exécutées (chapitre 9)
+36
+
+=== PAGE 37 ===
+Test de confirmation et test de régression
+Test de confirmation
+◦ Réexécuter, sur la version corrigée, les tests qui avaient échoué => le défaut est-il corrigé ?
+Test de régression
+◦ Réexécuter des tests sur les parties non modifiées => la modification a-t-elle introduit des effets de bord ?
+◦ S'appuie sur l'analyse d'impact (traçabilité)
+◦ Pas de nouveaux cas : on sélectionne et on priorise des cas existants
+◦ Exécuté à chaque version => candidat naturel à l'automatisation
+◦ Exemple : après correction de DEF-88 (révocation), on réexécute TC-034 (confirmation), puis tous les tests du partage et 
+des droits d'accès (régression)
+La suite de régression grossit à chaque version : sans automatisation, elle devient impossible à exécuter
+37
+
+=== PAGE 38 ===
+Activité 3 
+individuelle
+Objectif : classer des tests par niveau et par type
+Travail demandé : pour chaque test de « Liste de Courses », donner son 
+niveau et son type
+◦ 1. Vérifier que calculer_total() applique la promotion « 2 achetés, le 3e offert »
+◦ 2. Vérifier que l'application mobile et l'API échangent correctement une liste 
+modifiée hors ligne
+◦ 3. Mesurer que 500 utilisateurs simultanés synchronisent en moins de 2 s
+◦ 4. Des clients pilotes utilisent l'application pendant une semaine
+◦ 5. Exécuter toutes les branches de fusionner_listes()
+◦ 6. Payer une commande via la passerelle bancaire de recette
+◦ 7. Utiliser l'application avec un lecteur d'écran
+◦ 8. Après correction de l'arrondi, réexécuter le cas en échec puis tous les tests 
+du total
+Durée : 15 minutes
+38
+
+=== PAGE 39 ===
+Activité 3 individuelle
+Exemple de réponse
+Test Niveau Type
+1. Promotion dans calculer_total() Composant Fonctionnel
+2. Application mobile et API hors ligne Intégration de composants Fonctionnel
+3. 500 utilisateurs en moins de 2 s Système Non fonctionnel : performance
+4. Clients pilotes pendant une semaine Acceptation Fonctionnel et non fonctionnel (validation)
+5. Branches de fusionner_listes() Composant Boîte blanche
+6. Passerelle bancaire Intégration de systèmes Fonctionnel
+7. Lecteur d'écran Système Non fonctionnel : capacité d'interaction
+8. Après correction de l'arrondi Composant Confirmation, puis régression
+39
+
+=== PAGE 40 ===
+Stratégie de test basée sur les risques
+40
+
+=== PAGE 41 ===
+Stratégie de test basée sur les risques
+Définitions
+◦ Risque : événement potentiel dont la survenue aurait un effet négatif
+◦ Niveau de risque = probabilité × impact
+Deux catégories
+◦ Risque produit : lié à la qualité du produit (défaillance, faille, lenteur)
+◦ Risque projet : lié à la conduite du projet (retard, compétences, environnement indisponible)
+Test basé sur les risques
+◦ Les risques produit guident le test : niveaux, types, techniques, couverture, ordre d'exécution
+◦ Exemple : « un paiement débité deux fois » est un risque produit ; « le testeur sécurité n'est disponible que 3 jours » est 
+un risque projet
+41
+
+=== PAGE 42 ===
+Stratégie de test basée sur les risques : évaluation
+Trois étapes : identifier les risques => les évaluer de 1 à 3 => y répondre par le test
+Probabilité \ Impact Faible (1) Moyen (2) Élevé (3)
+Élevée (3) 3 : Moyen 6 : Élevé 9 : Élevé
+Moyenne (2) 2 : Faible 4 : Moyen 6 : Élevé
+Faible (1) 1 : Faible 2 : Faible 3 : Moyen
+ Élevé (6 à 9) : tests approfondis, exécutés en premier
+ Moyen (3 à 4) : tests ciblés
+ Faible (1 à 2) : tests exploratoires légers
+42
+
+=== PAGE 43 ===
+Stratégie de test basée sur les risques : exemple
+Analyse des risques produit pour « Liste de Courses »
+◦ P : probabilité ; I : impact (de 1 à 3) ; niveau = P × I
+Risque produit P I Niveau Réponse de test
+La synchronisation perd des modifications 
+faites hors ligne 3 3 9 Élevé Tests d'intégration et système sur tous les scénarios de coupure ; automatisés en régression
+Un utilisateur accède à la liste d'un autre 2 3 6 Élevé Tests de sécurité sur les droits d'accès ; revue de code ciblée
+Le total est faux avec les promotions 2 2 4 Moyen Tests de composant aux limites de la promotion
+L'affichage d'une longue liste est lent 2 2 4 Moyen Test de performance sur une liste de 500 produits
+Une icône est mal alignée sur tablette 2 1 2 Faible Test exploratoire
+43
+
+=== PAGE 44 ===
+Stratégie de test : le plan de test
+Définition
+◦ Document qui décrit les objectifs, les moyens et l'organisation du test d'un projet (ISO/IEC/IEEE 29119-3)
+Contenu type (ISTQB)
+◦ Contexte : périmètre, objectifs, base de test
+◦ Hypothèses et contraintes ; parties prenantes ; communication
+◦ Registre des risques
+◦ Approche de test : niveaux, types, techniques, livrables, critères d'entrée et de sortie, indépendance, métriques, 
+données et environnements
+◦ Budget et planning
+À ne pas confondre
+◦ Plan d'assurance qualité (chapitre 4) => la qualité de tout le projet ; plan de test => uniquement le test
+Comme le PAQ, le plan de test est un document vivant
+44
+
+=== PAGE 45 ===
+Stratégie de test : critères d'entrée et de sortie
+Critères Définition Exemple : test système de « Liste de Courses »
+Critères d'entrée Conditions préalables pour démarrer une activité de test Environnement de recette disponible ; version qui passe le test de fumée (smoke test1) ; user stories revues
+Critères de sortie Conditions à atteindre pour déclarer l'activité terminée 100 % des tests des risques élevés réussis ; 0 défaut critique ouvert ; 95 % des exigences couvertes
+Équivalent agile Définition de prêt (Definition of Ready) et définition de terminé (Definition of Done) User story prête : critères d'acceptation écrits. Terminée : tests automatisés réussis, revue faite
+Sans critère de sortie, le test s'arrête quand le temps est écoulé, pas quand le risque est maîtrisé
+45
+smoke test ou build verification test est une vérification rapide et superficielle effectuée sur une nouvelle version (build) d’un 
+logiciel pour s'assurer que ses fonctionnalités vitales fonctionnent et qu'il est suffisamment stable pour subir des tests plus approfondis
+
+=== PAGE 46 ===
+Stratégie de test : les quadrants de test
+◦ La pyramide (chapitre 4) dit combien de tests à chaque niveau ; les quadrants (Brian Marick) disent quels types de test ne 
+pas oublier
+Soutenir l'équipe (guider le développement) Critiquer le produit
+Orienté métier
+Q2 : tests fonctionnels, tests des user stories, tests 
+d'API
+Ex : critères d'acceptation de US-12
+Q3 : tests exploratoires, utilisabilité, acceptation 
+utilisateur
+Ex : session exploratoire sur le partage
+Orienté technologie
+Q1 : tests de composant et d'intégration de 
+composants, automatisés
+Ex : calculer_total()
+Q4 : tests de fumée et non fonctionnels
+Ex : charge de 500 utilisateurs, test d'intrusion
+Une stratégie équilibrée couvre les quatre quadrants
+46
+
+=== PAGE 47 ===
+Stratégie de test : pilotage et contrôle
+Mesurer l'avancement pour décider (exemple : fin de la semaine 2)
+Métrique Ce qu'elle indique Valeur
+Avancement de l'exécution Cas exécutés / cas prévus 112 / 140 (80 %)
+Taux de réussite Cas réussis / cas exécutés 101 / 112 (90 %)
+Défauts ouverts par sévérité Ce qui bloque encore la livraison 1 critique, 4 majeurs, 9 mineurs
+Couverture des risques Risques élevés dont tous les tests sont réussis 5 sur 7
+Couverture des exigences Exigences avec au moins un test réussi 46 / 50 (92 %)
+Contrôle : 1 défaut critique et 2 risques élevés non couverts => critère de sortie non atteint, la livraison est reportée
+47
+
+=== PAGE 48 ===
+Activité 4 en 
+groupe
+Objectif : construire une stratégie de test basée sur les risques
+Contexte : la version 2.0 de « Liste de Courses » ajoute la commande 
+des produits de la liste auprès d'un supermarché partenaire, le 
+paiement par carte et le choix d'un créneau de livraison
+◦ Livraison dans 6 semaines ; 2 testeurs ; la passerelle de paiement n'est 
+disponible en recette qu'à partir de la semaine 4
+Travail demandé :
+◦ 1. Identifier 5 risques produit et 2 risques projet
+◦ 2. Évaluer les risques produit : probabilité, impact, niveau
+◦ 3. Pour chaque risque produit élevé, choisir les niveaux et les types de 
+test
+◦ 4. Définir 3 critères d'entrée et 3 critères de sortie pour le test système
+◦ 5. Placer au moins un test dans chacun des quatre quadrants
+NB : chaque choix doit être justifié par un risque
+Activité de synthèse
+48
+
+=== PAGE 49 ===
+Activité 4 
+–
+ Exemple de réponse (1/2)
+Exemple de réponse : les risques
+◦ P : probabilité ; I : impact (de 1 à 3) ; niveau = P × I
+Risque produit P I Niveau Réponse de test
+Paiement débité deux fois (double clic, réseau 
+coupé) 2 3 6 Élevé Intégration de systèmes avec la passerelle ; tests de coupure réseau ; automatisés en régression
+Données de carte exposées 2 3 6 Élevé Test de sécurité ; revue de code ciblée ; test d'intrusion externe
+Commande de produits indisponibles chez le 
+partenaire 3 2 6 Élevé Test système ; intégration avec le catalogue du partenaire
+Créneau de livraison réservé deux fois 2 2 4 Moyen Tests de composant de la réservation ; test d'accès simultanés
+Commande lente aux heures de pointe 2 2 4 Moyen Test de charge : samedi matin simulé
+Risques projet : passerelle disponible en semaine 4 => simulateur dès la semaine 1. 2 testeurs => priorisation par les risques, 
+régression automatisée
+49
+
+=== PAGE 50 ===
+Activité 4 
+-
+ Exemple de réponse (2/2)
+Exemple de réponse : critères et quadrants
+Élément Exemple de réponse
+Critères d'entrée Environnement de recette avec la passerelle ou son simulateur ; version qui passe le test de fumée ; critères d'acceptation des 3 user stories revus
+Critères de sortie 100 % des tests des risques élevés réussis ; 0 défaut critique ou majeur ouvert sur le paiement ; commande en moins de 3 s pour 300 utilisateurs simultanés
+Q1 Tests de composant du montant de la commande et de la réservation de créneau
+Q2 Tests d'acceptation des user stories commande, paiement et créneau
+Q3 Session exploratoire sur le parcours de commande avec coupure réseau
+Q4 Test de charge du samedi matin ; test d'intrusion du paiement
+50

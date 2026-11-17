@@ -1,0 +1,124 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.8, pytest-9.2.0, pluggy-1.7.0
+rootdir: D:\GL\test\groupe_05
+configfile: pytest.ini
+testpaths: tests
+plugins: cov-7.1.0
+collected 84 items
+
+tests\test_panier.py ........F.............FF........................... [ 60%]
+.........................FFFF....                                        [100%]
+
+================================== FAILURES ===================================
+_______________________ test_total_quantite_non_entiere _______________________
+
+    def test_total_quantite_non_entiere():
+>       with pytest.raises(ValueError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests\test_panier.py:45: Failed
+__________________ test_frais_gratuits_au_seuil[GRAND_TUNIS] __________________
+
+zone = 'GRAND_TUNIS'
+
+    @pytest.mark.parametrize("zone", ["GRAND_TUNIS", "INTERIEUR"])
+    def test_frais_gratuits_au_seuil(zone):
+>       assert frais_livraison(70.0, zone) == 0.000
+E       AssertionError: assert 6.0 == 0.0
+E        +  where 6.0 = frais_livraison(70.0, 'GRAND_TUNIS')
+
+tests\test_panier.py:82: AssertionError
+___________________ test_frais_gratuits_au_seuil[INTERIEUR] ___________________
+
+zone = 'INTERIEUR'
+
+    @pytest.mark.parametrize("zone", ["GRAND_TUNIS", "INTERIEUR"])
+    def test_frais_gratuits_au_seuil(zone):
+>       assert frais_livraison(70.0, zone) == 0.000
+E       AssertionError: assert 9.0 == 0.0
+E        +  where 9.0 = frais_livraison(70.0, 'INTERIEUR')
+
+tests\test_panier.py:82: AssertionError
+_____________________ test_remise_plafonnee_au_total[nul] _____________________
+
+total = 0.0, adherent = False
+
+    @pytest.mark.parametrize("total, adherent", [(0.0, False), (2.0, False),
+                                               (2.0, True), (2.999, False)],
+                             ids=["nul", "petit_total", "petit_total_adherent", "juste_sous_3"])
+    def test_remise_plafonnee_au_total(total, adherent):
+>       assert remise(total, adherent, "LISTE3") == pytest.approx(total, rel=0, abs=1e-9)
+E       assert 3.0 == 0.0 ± 1.0e-09
+E         
+E         comparison failed
+E         Obtained: 3.0
+E         Expected: 0.0 ± 1.0e-09
+
+tests\test_panier.py:162: AssertionError
+_________________ test_remise_plafonnee_au_total[petit_total] _________________
+
+total = 2.0, adherent = False
+
+    @pytest.mark.parametrize("total, adherent", [(0.0, False), (2.0, False),
+                                               (2.0, True), (2.999, False)],
+                             ids=["nul", "petit_total", "petit_total_adherent", "juste_sous_3"])
+    def test_remise_plafonnee_au_total(total, adherent):
+>       assert remise(total, adherent, "LISTE3") == pytest.approx(total, rel=0, abs=1e-9)
+E       assert 3.0 == 2.0 ± 1.0e-09
+E         
+E         comparison failed
+E         Obtained: 3.0
+E         Expected: 2.0 ± 1.0e-09
+
+tests\test_panier.py:162: AssertionError
+____________ test_remise_plafonnee_au_total[petit_total_adherent] _____________
+
+total = 2.0, adherent = True
+
+    @pytest.mark.parametrize("total, adherent", [(0.0, False), (2.0, False),
+                                               (2.0, True), (2.999, False)],
+                             ids=["nul", "petit_total", "petit_total_adherent", "juste_sous_3"])
+    def test_remise_plafonnee_au_total(total, adherent):
+>       assert remise(total, adherent, "LISTE3") == pytest.approx(total, rel=0, abs=1e-9)
+E       assert 3.0 == 2.0 ± 1.0e-09
+E         
+E         comparison failed
+E         Obtained: 3.0
+E         Expected: 2.0 ± 1.0e-09
+
+tests\test_panier.py:162: AssertionError
+________________ test_remise_plafonnee_au_total[juste_sous_3] _________________
+
+total = 2.999, adherent = False
+
+    @pytest.mark.parametrize("total, adherent", [(0.0, False), (2.0, False),
+                                               (2.0, True), (2.999, False)],
+                             ids=["nul", "petit_total", "petit_total_adherent", "juste_sous_3"])
+    def test_remise_plafonnee_au_total(total, adherent):
+>       assert remise(total, adherent, "LISTE3") == pytest.approx(total, rel=0, abs=1e-9)
+E       assert 3.0 == 2.999 ± 1.0e-09
+E         
+E         comparison failed
+E         Obtained: 3.0
+E         Expected: 2.999 ± 1.0e-09
+
+tests\test_panier.py:162: AssertionError
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.14.8-final-0 _______________
+
+Name        Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------
+panier.py      35      0     18      0   100%
+-------------------------------------------------------
+TOTAL          35      0     18      0   100%
+Coverage JSON written to file resultats/couverture_finale.json
+=========================== short test summary info ===========================
+FAILED tests/test_panier.py::test_total_quantite_non_entiere - Failed: DID NO...
+FAILED tests/test_panier.py::test_frais_gratuits_au_seuil[GRAND_TUNIS] - Asse...
+FAILED tests/test_panier.py::test_frais_gratuits_au_seuil[INTERIEUR] - Assert...
+FAILED tests/test_panier.py::test_remise_plafonnee_au_total[nul] - assert 3.0...
+FAILED tests/test_panier.py::test_remise_plafonnee_au_total[petit_total] - as...
+FAILED tests/test_panier.py::test_remise_plafonnee_au_total[petit_total_adherent]
+FAILED tests/test_panier.py::test_remise_plafonnee_au_total[juste_sous_3] - a...
+======================== 7 failed, 77 passed in 0.93s =========================

@@ -1,0 +1,19 @@
+Tests sur panier.py : 77 réussis, 7 en échec
+   en échec (défaut révélé ?) : test_frais_gratuits_au_seuil[GRAND_TUNIS]
+   en échec (défaut révélé ?) : test_frais_gratuits_au_seuil[INTERIEUR]
+   en échec (défaut révélé ?) : test_remise_plafonnee_au_total[juste_sous_3]
+   en échec (défaut révélé ?) : test_remise_plafonnee_au_total[nul]
+   en échec (défaut révélé ?) : test_remise_plafonnee_au_total[petit_total]
+   en échec (défaut révélé ?) : test_remise_plafonnee_au_total[petit_total_adherent]
+   en échec (défaut révélé ?) : test_total_quantite_non_entiere
+
+mutant_1.py    TUÉ par test_total_arrondi_au_millime[arrondi_inferieur], test_total_arrondi_au_millime[arrondi_superieur], test_total_deux_lignes (+4)
+mutant_2.py    TUÉ par test_total_prix_non_positif[nul], test_total_verifie_aussi_la_deuxieme_ligne[prix_invalide]
+mutant_3.py    TUÉ par test_remise_arrondie_au_millime[arrondi_superieur], test_remise_code_different_ignore[casse_mixte], test_remise_code_different_ignore[espace_debut] (+6)
+mutant_4.py    TUÉ par test_remise_arrondie_au_millime[arrondi_inferieur], test_remise_arrondie_au_millime[arrondi_superieur], test_remise_code_different_ignore[casse_mixte] (+11)
+mutant_5.py    TUÉ par test_remise_code_au_plafond_et_apres[egal_3], test_remise_code_au_plafond_et_apres[juste_apres_3], test_remise_limites_seuil_adherent[seuil_cumul] (+5)
+mutant_6.py    TUÉ par test_frais_payants_sous_seuil[total_nul-GRAND_TUNIS-6.0], test_frais_payants_sous_seuil[total_nul-INTERIEUR-9.0], test_frais_premium_gratuits[0.0-GRAND_TUNIS] (+1)
+mutant_7.py    TUÉ par test_frais_grand_tunis, test_frais_gratuits_au_dessus_du_seuil[au_dessus-GRAND_TUNIS], test_frais_gratuits_au_dessus_du_seuil[au_dessus-INTERIEUR] (+32)
+mutant_8.py    SURVIVANT
+
+Mutants tués : 7 / 8
