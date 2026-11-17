@@ -19,6 +19,7 @@ def total_panier(lignes):
     """Total d'une liste de lignes (prix_unitaire, quantite)."""
     total = 0.0
     for prix, quantite in lignes:
+        # ORIGINAL if prix <= 0:
         if prix < 0:
             raise ValueError("prix invalide")
         if quantite < 1 or quantite > QUANTITE_MAX:
